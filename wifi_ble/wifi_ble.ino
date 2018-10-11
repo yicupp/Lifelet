@@ -15,6 +15,34 @@ static boolean doConnect = false;
 static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 
+char ble_buff[100] {'\0'};
+
+//wifi
+/**
+ * A simple Azure IoT example for sending telemetry.
+ */
+
+#include <WiFi.h>
+#include "Esp32MQTTClient.h"
+
+// Please input the SSID and password of WiFi
+//const char* ssid     = "Terrortown";
+//const char* password = "aaaaaaaa";
+
+//const char* ssid     = "OPTUS_755C9E";
+//const char* password = "coredsouse20745";
+
+const char* ssid     = "yicup";
+const char* password = "aaaaaaaa";
+
+/*String containing Hostname, Device Id & Device Key in the format:                         */
+/*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"                */
+/*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessSignature=<device_sas_token>"    */
+static const char* connectionString = "HostName=Lifelet.azure-devices.net;DeviceId=gateway1;SharedAccessKey=DysRZD7S3gc16BOB01mRFdVdHr66Yo+CsJimJJnpjrU=";
+
+static bool hasIoTHub = false;
+//wifi
+
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
   uint8_t* pData,
@@ -31,8 +59,28 @@ static void notifyCallback(
     Serial.println(value.c_str());
     for (int i=0;i<length;i++) {
         Serial.print(char(*(pData+i)));
+        *(ble_buff+i) = *(pData+i);
     }
     Serial.println("");
+
+    if (hasIoTHub)
+  {
+    char buff[128];
+
+    // replace the following line with your data sent to Azure IoTHub
+    snprintf(buff, 128, "{\"data\":\"%s\"}", ble_buff);
+    
+    if (Esp32MQTTClient_SendEvent(buff))
+    {
+      Serial.print("Sending data \"");
+      Serial.print(ble_buff);
+      Serial.println("\" succeed");
+    }
+    else
+    {
+      Serial.println("Failure...");
+    }
+  }
 }
 
 bool connectToServer(BLEAddress pAddress) {
@@ -101,8 +149,31 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Arduino BLE Client application...");
-  BLEDevice::init("");
+  Serial.println("Starting connecting WiFi.");
+  delay(10);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
 
+  if (!Esp32MQTTClient_Init((const uint8_t*)connectionString))
+  {
+    hasIoTHub = false;
+    Serial.println("Initializing IoT hub failed.");
+    return;
+  }
+  else 
+  {
+    hasIoTHub = true;
+    Serial.println("Connection to IoT hub success");
+  }
+  
+  BLEDevice::init("");
+    
   // Retrieve a Scanner and set the callback we want to use to be informed when we
   // have detected a new device.  Specify that we want active scanning and start the
   // scan to run for 30 seconds.
@@ -110,6 +181,7 @@ void setup() {
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true);
   pBLEScan->start(30);
+  
 } // End of setup.
 
 

@@ -15,6 +15,18 @@ static boolean doConnect = false;
 static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 
+//wifi
+#include <WiFi.h>
+
+const char* ssid     = "yicup";
+const char* password = "aaaaaaaa";
+
+const char* host = "www.google.com.au";
+const char* streamId   = "....................";
+const char* privateKey = "....................";
+
+// \wifi
+
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
   uint8_t* pData,
@@ -99,8 +111,26 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 
 void setup() {
-  Serial.begin(115200);
-  Serial.println("Starting Arduino BLE Client application...");
+    Serial.begin(115200);
+    Serial.println("Starting Arduino BLE Client application...");
+
+    Serial.println();
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(ssid);
+
+    WiFi.begin(ssid, password);
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+    
   BLEDevice::init("");
 
   // Retrieve a Scanner and set the callback we want to use to be informed when we
@@ -138,6 +168,49 @@ void loop() {
     // Set the characteristic's value to be the array of bytes that is actually a string.
     //pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
   }
+
+  Serial.print("connecting to ");
+    Serial.println(host);
+
+    // Use WiFiClient class to create TCP connections
+    WiFiClient client;
+    const int httpPort = 80;
+    if (!client.connect(host, httpPort)) {
+        Serial.println("connection failed");
+        return;
+    }
+
+    // We now create a URI for the request
+    String url = "/input/";
+    url += streamId;
+    url += "?private_key=";
+    url += privateKey;
+    url += "&value=";
+    //url += value;
+
+    Serial.print("Requesting URL: ");
+    Serial.println(url);
+
+    // This will send the request to the server
+    client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+                 "Host: " + host + "\r\n" +
+                 "Connection: close\r\n\r\n");
+    unsigned long timeout = millis();
+/*    while (client.available() == 0) {
+        if (millis() - timeout > 5000) {
+            Serial.println(">>> Client Timeout !");
+            client.stop();
+            return;
+        }
+    }
+*/
+    // Read all the lines of the reply from server and print them to Serial
+    while(client.available()) {
+        String line = client.readStringUntil('\r');
+        Serial.print(line);
+    }
+
+    Serial.println();
   
-  delay(1000); // Delay a second between loops.
+  
 } // End of loop
