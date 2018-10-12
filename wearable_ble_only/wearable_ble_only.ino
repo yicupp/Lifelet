@@ -8,11 +8,32 @@ int LEDPIN = 13;
 #define SLAVE_NAME      "LIFELETS0001"
 #define BEACON_NAME     "LIFELETB0001"
 
+#define SLAVE_SERV_ID    "0x1234"
+#define BEACON_SERV_ID   "0xabcd"
+
+#define SLAVE_CHAR_ID       "0x6969"
+#define BEACON_CHAR_ID      "0xDADA"
+
+#define SLAVE_MEAS_POW      "0xC5"
+#define BEACON_MEAS_POW     "0xC5"
+
+#define RENEW           
+#define RENEW_DELAY     2500
+
+//timeout values
+#define TOS     500000
+#define TOF     500
+
 // When a command is entered in to the serial monitor on the computer 
 // the Arduino will relay it to the ESP8266
 
 #define DEBUG
 
+#define CMD_BUFF_SIZE   50
+#define USR_BUFF_SIZE   100
+
+char cmdBuff[CMD_BUFF_SIZE] = {'\0'};
+char usrBuff[USR_BUFF_SIZE] = {'\0'};
 
 int AT_ok( char *str ) 
 {
@@ -20,27 +41,27 @@ int AT_ok( char *str )
     return 1;
 }
 
-void AT_set( char *cmd ) {
+void slvSend( char *cmd ) {
     char buf[50];
     sprintf( buf, "AT+%s", cmd);
-    mySerial.write( buf );
+    hmSlave.write( buf );
 #ifdef DEBUG
     Serial.print( "AT_set ");
     Serial.println( buf );
 #endif
 }
 
-void AT_get( char *cmd ) {
+void beaSend( char *cmd ) {
     char buf[50];
-    sprintf( buf, "AT+%s?", cmd);
-    mySerial.write( buf );
-    if( debug ) {
-        Serial.print( "AT_set ");
-        Serial.println( buf );
-    }
+    sprintf( buf, "AT+%s", cmd);
+    hmBeacon.write( buf );
+#ifdef DEBUG
+    Serial.print( "AT_set ");
+    Serial.println( buf );
+#endif
 }
 
-int AT_cmd( char *cmd, int to_s, int to_f ) {
+int slvCmd( char *cmd, int to_s, int to_f ) {
     char msg_buff[50] = {0};
     char msg_size = 50;
 
@@ -50,70 +71,34 @@ int AT_cmd( char *cmd, int to_s, int to_f ) {
         Serial.println( " sent");
 #endif
      
-    AT_set( cmd );
-    getmsg_blk( to_s, to_f, msg_buff, msg_size );
+    slvSend( cmd );
+    slvGet( to_s, to_f, msg_buff, msg_size );
 
 #ifdef DEBUG
-        Serial.print( "BLE " );
-        Serial.print( cmd );
-        Serial.print( " returned " );
-        Serial.print( msg_buff );
+        Serial.print( "AT_RET " );
+        Serial.println( msg_buff );
 #endif
-    
-    if( msg_buff[0] == 'O' && msg_buff[1] == 'K' ) 
-    {
-#ifdef DEBUG        
-        Serial.println( " **** OK" );
-#endif
-        return 0;
-    }
-    else 
-    {
-#ifdef DEBUG
-        Serial.println( " **** not OK" );
-#endif
-        return 1;
-    }
+    return 0;
 }
 
-int AT_scan_for_mac(char *mac, int to_s, int to_f) 
-{
-    char buf[50] = {'\0'};
-    if( debug ) 
-    {
-        Serial.print( "Starting iBeacon scan for mac " );
-        Serial.println( mac );
-    }
-    AT_get( "DISI" );
-    getmsg_blk( buf, to_s, to_f, 50 );
-    if( AT_ok( buf ) == 0 ) {
+int beaCmd( char *cmd, int to_s, int to_f ) {
+    char msg_buff[50] = {0};
+    char msg_size = 50;
+
 #ifdef DEBUG
-        Serial.println( "Scan started" );
+        Serial.print( "AT_cmd ");
+        Serial.print( cmd );
+        Serial.println( " sent");
 #endif
-        while( getmsg_blk( buf, to_s, to_f, 50 ) == 0) {
-            if( ar_substr(buf, wrb_mac) ) 
-            {
-#ifdef DEBUG                
-                Serial.println( "Found device !" );
+     
+    beaSend( cmd );
+    beaGet( to_s, to_f, msg_buff, msg_size );
+
+#ifdef DEBUG
+        Serial.print( "AT_RET ");
+        Serial.println( msg_buff );
 #endif
-                while( getmsg_blk( buf, to_s, to_f, 50 ) == 0 ) if( ar_cmp( buf, "OK+DISCE", 8 ) == 0 ) break;
-                return 0;
-            }
-        }
-        if( ar_cmp( buf, "OK+DISCE", 8 ) == 0 ) 
-        {
-#ifdef DEBUG
-            Serial.println( "Failed to find device" );
-#endif            
-            return 1;
-        }
-    }
-    else {
-#ifdef DEBUG
-        Serial.println( "Scan failed to start" );
-#endif        
-        return 2;
-    }
+    return 0;
 }
 
 //search for a substring in a string
@@ -158,68 +143,135 @@ void setup() {
     Serial.println("");    
 #endif
 #ifdef DEBUG
-    if( debug ) Serial.println( "Debug mode on!" );
+    Serial.println( "Debug mode on!" );
 #endif
 
 
     //initialise hmbeacon
     Serial.println("***********************************************\n");
-    Serial.println( "Initialising BLE Module" );
-    
-    Serial.println( "Checking BLE Module status" );
- 
+    Serial.println( "Initialising Beacon module" );
 
-    
-    mySerial.write( "AT" );
-    getmsg_blk( 50000, 500, msg_buff, msg_size );
-    if( msg_buff == "OK" ) 
-    {
-        Serial.println( "BLE Module OK" );
-    }
-    Serial.println( "" );
-
-    Serial.println( "Setting power on mode" );
-    AT_cmd( "IMME1", 500000, 500 );
-    Serial.println( "" );
-    
-    Serial.println( "Finding Device name: " );
-    AT_cmd( "NAME?", 500000, 500 );
-    Serial.println( "" );
-
+    hmBeacon.listen();
     Serial.println( "Finding Device MAC: " );
-    AT_cmd( "ADDR?", 500000, 500 );
+    beaCmd( "ADDR?", TOS, TOF );
     Serial.println( "" );
 
     Serial.println( "Finding software version: " );
-    AT_cmd( "VERR?", 500000, 500 );
+    beaCmd( "VERR?", TOS, TOF );
+    Serial.println( "" );
+
+#ifdef RENEW
+    Serial.println("Restoring to default settings");
+    beaCmd( "RENEW", TOS, TOF );
+    Serial.println( "" );
+    delay(RENEW_DELAY);
+#endif
+
+    Serial.println( "Setting power on mode" );
+    beaCmd( "IMME1", TOS, TOF );
     Serial.println( "" );
     
-    Serial.println( "Setting BLE Server mode" );
-    AT_cmd( "ROLE0", 500000, 500 );
+    Serial.print( "Setting device name to: " );
+    Serial.println(BEACON_NAME);
+    sprintf(cmdBuff, "NAME%s", BEACON_NAME);
+    beaCmd( cmdBuff, TOS, TOF );
+    Serial.println( "" );
+    
+    Serial.println( "Setting BLE Slave mode" );
+    beaCmd( "ROLE0", TOS, TOF );
     Serial.println( "" );
 
+    Serial.println( "Setting advertising interval" );
+    beaCmd( "ADVI1", TOS, TOF );
+    Serial.println( "" );
+
+    Serial.println("Setting service uuid to:");
+    Serial.println(BEACON_SERV_ID);
+    sprintf(cmdBuff, "UUID%s", BEACON_SERV_ID);
+    beaCmd( cmdBuff, TOS, TOF );
+    Serial.println("");
+
+    Serial.println("Setting characteristic uuid to:");
+    Serial.println(BEACON_CHAR_ID);
+    sprintf(cmdBuff, "CHAR%s", BEACON_CHAR_ID);
+    beaCmd( cmdBuff, TOS, TOF );
+    Serial.println("");
+
+    Serial.println("Restarting module");
+    beaCmd("RESET",TOS,TOF);
+    Serial.println("");
+
     Serial.println( "**********************************************" );
-    Serial.println( "BLE INIT COMPLETE" );
-    Serial.println( "**********************************************" );
-/*
-    Serial.println( "\n\n" );
-    Serial.println( "**********************************************" );
-    Serial.print( "Beginning discovery for " );
-    Serial.println( wrb_mac );
+    Serial.println( "BEACON INIT COMPLETE" );
     Serial.println( "**********************************************" );
 
-    Serial.println("Discovery complete");
-*/
+    Serial.println("***********************************************\n");
+    Serial.println( "Initialising Peripheral module" );
+
+    hmSlave.listen();
+    Serial.println( "Finding Device MAC: " );
+    slvCmd( "ADDR?", TOS, TOF );
+    Serial.println( "" );
+
+    Serial.println( "Finding software version: " );
+    slvCmd( "VERR?", TOS, TOF );
+    Serial.println( "" );
+
+#ifdef RENEW
+    Serial.println("Restoring to default settings");
+    slvCmd( "RENEW", TOS, TOF );
+    Serial.println( "" );
+    delay(RENEW_DELAY);
+#endif
+
+    Serial.println( "Setting power on mode" );
+    slvCmd( "IMME1", TOS, TOF );
+    Serial.println( "" );
+    
+    Serial.print( "Setting device name to: " );
+    Serial.println(SLAVE_NAME);
+    sprintf(cmdBuff, "NAME%s", SLAVE_NAME);
+    slvCmd( cmdBuff, TOS, TOF );
+    Serial.println( "" );
+    
+    Serial.println( "Setting BLE Slave mode" );
+    slvCmd( "ROLE0", TOS, TOF );
+    Serial.println( "" );
+
+    Serial.println( "Setting advertising interval" );
+    slvCmd( "ADVI1", TOS, TOF );
+    Serial.println( "" );
+
+    Serial.println("Setting service uuid to:");
+    Serial.println(SLAVE_SERV_ID);
+    sprintf(cmdBuff, "UUID%s", SLAVE_SERV_ID);
+    slvCmd( cmdBuff, TOS, TOF );
+    Serial.println("");
+
+    Serial.println("Setting characteristic uuid to:");
+    Serial.println(SLAVE_CHAR_ID);
+    sprintf(cmdBuff, "CHAR%s", SLAVE_CHAR_ID);
+    slvCmd( cmdBuff, TOS, TOF );
+    Serial.println("");
+
+    Serial.println("Restarting module");
+    slvCmd("RESET",TOS,TOF);
+    Serial.println("");
+
+    Serial.println( "**********************************************" );
+    Serial.println( "PERIPH INIT COMPLETE" );
+    Serial.println( "**********************************************" );
+
     Serial.println("Starting loop");
     Serial.println( "+++++++++++++++++++++++++++++++++++++++++++++++" );
 }
 
-//get msg from thing with a timeout 
-int getmsg_blk( int to_start, int to_finish, char *buff, int buff_size ) {
+//get msg from thing with a timeout from slave
+int slvGet( int to_start, int to_finish, char *buff, int buff_size ) {
     int count = 0;
     int charc = 0;
 
-    while( count < to_start && mySerial.available() == 0) {
+    while( count < to_start && hmSlave.available() == 0) {
         count++;
     }
     if(count == to_start) {
@@ -228,9 +280,35 @@ int getmsg_blk( int to_start, int to_finish, char *buff, int buff_size ) {
     }
     
     while( count < to_finish && charc < buff_size - 1 ) {
-        if( mySerial.available() ) {
+        if( hmSlave.available() ) {
              //mySerial.read() ;
-             buff[charc] = mySerial.read();
+             buff[charc] = hmSlave.read();
+             count = 0;
+             charc++;
+        }
+        count++;
+    }
+    buff[charc] = '\0';
+    return 0;
+}
+
+//get msg from thing with a timeout from slave
+int beaGet( int to_start, int to_finish, char *buff, int buff_size ) {
+    int count = 0;
+    int charc = 0;
+
+    while( count < to_start && hmSlave.available() == 0) {
+        count++;
+    }
+    if(count == to_start) {
+        Serial.println("Msg Receive timed out");
+        return 1;
+    }
+    
+    while( count < to_finish && charc < buff_size - 1 ) {
+        if( hmBeacon.available() ) {
+             //mySerial.read() ;
+             buff[charc] = hmBeacon.read();
              count = 0;
              charc++;
         }
@@ -245,26 +323,52 @@ int to = 500;
 
 void loop() 
 {
-    // listen for communication from the ESP8266 and then write it to the serial monitor
-    if ( mySerial.available() )   
-    { 
-        prev = 0;
-        Serial.write( mySerial.read() );  
+
+    //Put your code here
+    //Delete the stuff in the loop
+    //They are for you to see the sending for yourself
+    //Send data using 
+    //hmSlave.write(str)
+    
+    // listen to the slave
+    if ( hmSlave.available() )   { 
+        while (hmSlave.available() > 0) {
+            char inByte = hmSlave.read();
+            Serial.write(inByte);
+        } 
+        Serial.write('\n');
     }
-    else 
-    {
-        if(prev > to) 
-        {
-            Serial.println("");
-            prev = -1;
-        }
-        if(prev != -1) {
-            prev ++;
-        }
+
+    //listen to beacon
+    if ( hmBeacon.available() )   { 
+        while (hmBeacon.available() > 0) {
+            char inByte = hmBeacon.read();
+            Serial.write(inByte);
+        } 
+        Serial.write('\n');
     }
  
-    // listen for user input and send it to the ESP8266
-    if ( Serial.available() )       {  mySerial.write( Serial.read() );  }
-
-    //mySerial.write("AT");
+    // listen for user input and send it to the slave or beacon
+    if ( Serial.available() > 0) {   
+        delay(50);//wait for all data to arrive  
+        char *p = usrBuff;
+        while(Serial.available() > 0) {
+            *p = Serial.read();
+            //Serial.print(*p);
+            p++;
+        }
+        *p = '\0';
+        if(usrBuff[0]=='s' || usrBuff[0]=='S') {
+            hmSlave.write(usrBuff+1);
+            Serial.print("To slave: ");
+            Serial.println(usrBuff+1);
+            hmSlave.listen();
+        }
+        else {
+            hmBeacon.write(usrBuff);
+            Serial.print("To beacon: ");
+            Serial.println(usrBuff);
+            hmBeacon.listen();
+        }
+    }
 }

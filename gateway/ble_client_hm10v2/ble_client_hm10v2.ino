@@ -6,9 +6,9 @@
 //#include "BLEScan.h"
 
 // The remote service we wish to connect to.
-static BLEUUID serviceUUID("0000ffe0-0000-1000-8000-00805f9b34fb");
+static BLEUUID serviceUUID("00001234-0000-1000-8000-00805f9b34fb");
 // The characteristic of the remote service we are interested in.
-static BLEUUID    charUUID("0000ffe1-0000-1000-8000-00805f9b34fb");
+static BLEUUID    charUUID("00006969-0000-1000-8000-00805f9b34fb");
 
 static BLEAddress *pServerAddress;
 static boolean doConnect = false;
@@ -81,6 +81,8 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
    */
   void onResult(BLEAdvertisedDevice advertisedDevice) {
     Serial.print("BLE Advertised Device found: ");
+    Serial.print("RSSI: ");
+    Serial.print(advertisedDevice.getRSSI());
     Serial.println(advertisedDevice.toString().c_str());
 
     // We have found a device, let us now see if it contains the service we are looking for.

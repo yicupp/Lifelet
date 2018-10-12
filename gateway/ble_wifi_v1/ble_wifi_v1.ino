@@ -21,11 +21,10 @@ static BLERemoteCharacteristic* pRemoteCharacteristic;
 const char* ssid     = "yicup";
 const char* password = "aaaaaaaa";
 
-const char* host = "8.8.8.8";
-const char* streamId   = "....................";
-const char* privateKey = "....................";
+const char* host = "47.91.46.124";
 
 // \wifi
+
 
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
@@ -45,6 +44,42 @@ static void notifyCallback(
         Serial.print(char(*(pData+i)));
     }
     Serial.println("");
+
+    Serial.print("connecting to ");
+    Serial.println(host);
+
+    // Use WiFiClient class to create TCP connections
+    WiFiClient client;
+    const int httpPort = 80;
+    if (!client.connect(host, httpPort)) {
+        Serial.println("connection failed");
+        return;
+    }
+
+    // This will send the request to the server
+    /*client.print(String("PUT ") + url + " HTTP/1.1\r\n" +
+                 "Host: " + host + "\r\n" +
+                 "Connection: close\r\n\r\n");*/
+
+    client.print(   String("PUT /tablestore HTTP/1.1") + "\r\n" +
+                    "Host: 47.91.46.124:80" + "\r\n" +
+                    "Content-Type: application/json" + "\r\n" +
+                    "Content-Length: 100" + "\r\n" +    
+                    "\r\n" +
+                    "{" + "\r\n" +
+                    "\"acceleration_x\": \"1234\"," + "\r\n" +
+                    "\"acceleration_y\": \"54\"," + "\r\n" +
+                    "\"acceleration_z\": \"343\"" + "\r\n" +
+                    "}" "\r\n" + "\r\n");
+
+    unsigned long timeout = millis();
+    Serial.println("Sent packet");
+    
+    // Read all the lines of the reply from server and print them to Serial
+    /*while(client.available()) {
+        String line = client.readStringUntil('\r');
+        Serial.print(line);
+    }*/
 }
 
 bool connectToServer(BLEAddress pAddress) {
@@ -93,6 +128,8 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
    */
   void onResult(BLEAdvertisedDevice advertisedDevice) {
     Serial.print("BLE Advertised Device found: ");
+    Serial.print("RSSI: ");
+    Serial.print(advertisedDevice.getRSSI());
     Serial.println(advertisedDevice.toString().c_str());
 
     // We have found a device, let us now see if it contains the service we are looking for.
@@ -111,8 +148,8 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 
 void setup() {
-    Serial.begin(115200);
-    Serial.println("Starting Arduino BLE Client application...");
+  Serial.begin(115200);
+  Serial.println("Starting Arduino BLE Client application...");
 
     Serial.println();
     Serial.println();
@@ -130,7 +167,7 @@ void setup() {
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());
-    
+  
   BLEDevice::init("");
 
   // Retrieve a Scanner and set the callback we want to use to be informed when we
@@ -159,58 +196,38 @@ void loop() {
     doConnect = false;
   }
 
-  // If we are connected to a peer BLE Server, update the characteristic each time we are reached
-  // with the current time since boot.
-  if (connected) {
-    String newValue = "Time since boot: " + String(millis()/1000);
-    //Serial.println("Setting new characteristic value to \"" + newValue + "\"");
-    
-    // Set the characteristic's value to be the array of bytes that is actually a string.
-    //pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
-  }
-
-    Serial.print("connecting to ");
-    Serial.println(host);
-
-    // Use WiFiClient class to create TCP connections
-    WiFiClient client;
+  WiFiClient client;
     const int httpPort = 80;
     if (!client.connect(host, httpPort)) {
         Serial.println("connection failed");
         return;
     }
 
-    // We now create a URI for the request
-    String url = "/input/";
-    url += streamId;
-    url += "?private_key=";
-    url += privateKey;
-    url += "&value=";
-    //url += value;
-
-    Serial.print("Requesting URL: ");
-    Serial.println(url);
-
     // This will send the request to the server
-    client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+    /*client.print(String("PUT ") + url + " HTTP/1.1\r\n" +
                  "Host: " + host + "\r\n" +
-                 "Connection: close\r\n\r\n");
+                 "Connection: close\r\n\r\n");*/
+/*
+    client.print(   String("PUT /tablestore HTTP/1.1") + "\r\n" +
+                    "Host: 47.91.46.124:80" + "\r\n" +
+                    "Content-Type: application/json" + "\r\n" +
+                    "Content-Length: 100" + "\r\n" +    
+                    "\r\n" +
+                    "{" + "\r\n" +
+                    "\"acceleration_x\": \"1234\"," + "\r\n" +
+                    "\"acceleration_y\": \"54\"," + "\r\n" +
+                    "\"acceleration_z\": \"343\"" + "\r\n" +
+                    "}" "\r\n" + "\r\n");
+
     unsigned long timeout = millis();
-/*    while (client.available() == 0) {
-        if (millis() - timeout > 5000) {
-            Serial.println(">>> Client Timeout !");
-            client.stop();
-            return;
-        }
-    }
-*/
-    // Read all the lines of the reply from server and print them to Serial
+    Serial.println("Sent packet");
+
+    Serial.println("Return");
     while(client.available()) {
         String line = client.readStringUntil('\r');
         Serial.print(line);
     }
-
-    Serial.println();
-  
-  
+    Serial.println("end return");*/
+    
+  delay(1000); // Delay a second between loops.
 } // End of loop
