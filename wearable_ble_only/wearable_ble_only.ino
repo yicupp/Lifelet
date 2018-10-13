@@ -5,11 +5,11 @@ SoftwareSerial hmSlave(4,5);        //Rx,Tx
 
 int LEDPIN = 13;
 
-#define SLAVE_NAME      "LIFELETS0001"
-#define BEACON_NAME     "LIFELETB0001"
+#define SLAVE_NAME      "LIFELETS0002"
+#define BEACON_NAME     "LIFELETB0002"
 
 #define SLAVE_SERV_ID    "0x1234"
-#define BEACON_SERV_ID   "0xabcd"
+#define BEACON_SERV_ID   "0xABCD"
 
 #define SLAVE_CHAR_ID       "0x6969"
 #define BEACON_CHAR_ID      "0xDADA"
