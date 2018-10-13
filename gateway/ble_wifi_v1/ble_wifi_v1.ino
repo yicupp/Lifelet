@@ -23,6 +23,7 @@ const char* password = "aaaaaaaa";
 
 const char* host = "47.91.46.124";
 
+char *http_buff[250] = {'\0'};
 // \wifi
 
 
@@ -57,19 +58,17 @@ static void notifyCallback(
     }
 
     // This will send the request to the server
-    /*client.print(String("PUT ") + url + " HTTP/1.1\r\n" +
-                 "Host: " + host + "\r\n" +
-                 "Connection: close\r\n\r\n");*/
 
     client.print(   String("PUT /tablestore HTTP/1.1") + "\r\n" +
-                    "Host: 47.91.46.124:80" + "\r\n" +
+                    "Host: 47.91.46.124:5000" + "\r\n" +
                     "Content-Type: application/json" + "\r\n" +
-                    "Content-Length: 100" + "\r\n" +    
+                    "Content-Length: 108" + "\r\n" +    
                     "\r\n" +
                     "{" + "\r\n" +
                     "\"acceleration_x\": \"1234\"," + "\r\n" +
                     "\"acceleration_y\": \"54\"," + "\r\n" +
                     "\"acceleration_z\": \"343\"" + "\r\n" +
+                    "\"fall_detection\": \"1\"" + "\r\n" +
                     "}" "\r\n" + "\r\n");
 
     unsigned long timeout = millis();
@@ -167,6 +166,9 @@ void setup() {
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());
+
+    Serial.println("Sending alive packet to server");
+    wifi_alive();
   
   BLEDevice::init("");
 
@@ -231,3 +233,7 @@ void loop() {
     
   delay(1000); // Delay a second between loops.
 } // End of loop
+
+http_body() {
+    
+}
