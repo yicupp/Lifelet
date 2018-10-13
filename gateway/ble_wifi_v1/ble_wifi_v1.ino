@@ -10,6 +10,10 @@ static BLEUUID serviceUUID("00001234-0000-1000-8000-00805f9b34fb");
 // The characteristic of the remote service we are interested in.
 static BLEUUID    charUUID("00006969-0000-1000-8000-00805f9b34fb");
 
+static BLEUUID beaconServUUID("0000abcd-0000-1000-8000-00805f9b34fb");
+// The characteristic of the remote service we are interested in.
+static BLEUUID beaconCharUUID("0000dada-0000-1000-8000-00805f9b34fb");
+
 static BLEAddress *pServerAddress;
 static boolean doConnect = false;
 static boolean connected = false;
@@ -23,9 +27,49 @@ const char* password = "aaaaaaaa";
 
 const char* host = "47.91.46.124";
 
-char *http_buff[250] = {'\0'};
+char *http_buff[500] = {'\0'};
 // \wifi
 
+//BLE packet structure:
+//customer_num:key:data[10]
+
+//HTTP keys
+#define CODE_HUMIDITY       1
+#define  KEY_HUMIDITY       "humidity"
+#define CODE_TEMP           2
+#define  KEY_TEMP           "temp"
+#define CODE_SVM            3
+#define  KEY_SVM            "svm"
+#define CODE_VEL_MAG        4
+#define  KEY_VEL_MAG        "vel_mag"
+#define CODE_STEP_COUNT     5
+#define  KEY_STEP_COUNT     "step_count"
+#define CODE_FALL_DETECTED  6
+#define  KEY_FALL_DETECTED  "fall_detected"
+#define CODE_GATEWAY_NAME   7
+#define  KEY_GATEWAY_NAME   "gateway_name"
+#define CODE_DEV_NAME       8
+#define  KEY_DEV_NAME       "dev_name"
+#define CODE_RSSI           9
+#define  KEY_RSSI           "RSSI"
+
+//
+
+//data structure for ble slave
+//device mac
+//device name
+//temp
+//humidity
+//svm
+//fall_detected
+//vel_mag
+//step_count
+//
+//data struct for beacon
+//device mac
+//device name
+//rssi
+//
 
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
@@ -38,47 +82,13 @@ static void notifyCallback(
     Serial.println(length);
 
     // Read the value of the characteristic.
-    std::string value = pBLERemoteCharacteristic->readValue();
-    Serial.print("The characteristic value was: ");
     Serial.println(value.c_str());
     for (int i=0;i<length;i++) {
         Serial.print(char(*(pData+i)));
     }
     Serial.println("");
 
-    Serial.print("connecting to ");
-    Serial.println(host);
-
-    // Use WiFiClient class to create TCP connections
-    WiFiClient client;
-    const int httpPort = 80;
-    if (!client.connect(host, httpPort)) {
-        Serial.println("connection failed");
-        return;
-    }
-
-    // This will send the request to the server
-
-    client.print(   String("PUT /tablestore HTTP/1.1") + "\r\n" +
-                    "Host: 47.91.46.124:5000" + "\r\n" +
-                    "Content-Type: application/json" + "\r\n" +
-                    "Content-Length: 108" + "\r\n" +    
-                    "\r\n" +
-                    "{" + "\r\n" +
-                    "\"acceleration_x\": \"1234\"," + "\r\n" +
-                    "\"acceleration_y\": \"54\"," + "\r\n" +
-                    "\"acceleration_z\": \"343\"" + "\r\n" +
-                    "\"fall_detection\": \"1\"" + "\r\n" +
-                    "}" "\r\n" + "\r\n");
-
-    unsigned long timeout = millis();
-    Serial.println("Sent packet");
-    
-    // Read all the lines of the reply from server and print them to Serial
-    /*while(client.available()) {
-        String line = client.readStringUntil('\r');
-        Serial.print(line);
-    }*/
+   
 }
 
 bool connectToServer(BLEAddress pAddress) {
@@ -122,10 +132,10 @@ bool connectToServer(BLEAddress pAddress) {
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
  */
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
- /**
-   * Called for each advertising BLE server.
-   */
-  void onResult(BLEAdvertisedDevice advertisedDevice) {
+    /**
+    * Called for each advertising BLE server.
+    */
+    void onResult(BLEAdvertisedDevice advertisedDevice) {
     Serial.print("BLE Advertised Device found: ");
     Serial.print("RSSI: ");
     Serial.print(advertisedDevice.getRSSI());
@@ -133,25 +143,32 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
     // We have found a device, let us now see if it contains the service we are looking for.
     if (advertisedDevice.haveServiceUUID() && advertisedDevice.getServiceUUID().equals(serviceUUID)) {
+        // 
+        Serial.println("Found slave device! ^^^"); 
+        //advertisedDevice.getScan()->stop();
 
-      // 
-      Serial.print("Found our device!  address: "); 
-      advertisedDevice.getScan()->stop();
-
-      pServerAddress = new BLEAddress(advertisedDevice.getAddress());
-      doConnect = true;
-
+        pServerAddress = new BLEAddress(advertisedDevice.getAddress());
+        if (connectToServer(*pServerAddress)) {
+            Serial.println("We are now connected to the BLE Server.");
+            connected = true;
+        } else {
+            Serial.println("We have failed to connect to the server; there is nothin more we will do.");
+        }
     } // Found our server
-  } // onResult
+    else if(advertisedDevice.haveServiceUUID() && advertisedDevice.getServiceUUID().equals(beaconServUUID)) {
+        Serial.println("Found beacon! ^^^");
+        } // Found a beacon
+    } // onResult
+    else Serial.println("Not our device");
 }; // MyAdvertisedDeviceCallbacks
 
 
 void setup() {
-  Serial.begin(115200);
-  Serial.println("Starting Arduino BLE Client application...");
+    Serial.begin(115200);
+    Serial.println("Starting Arduino BLE Client application...");
 
     Serial.println();
-    Serial.println();
+    Serial.println("Starting wifi");
     Serial.print("Connecting to ");
     Serial.println(ssid);
 
@@ -170,70 +187,28 @@ void setup() {
     Serial.println("Sending alive packet to server");
     wifi_alive();
   
-  BLEDevice::init("");
+    BLEDevice::init("");
 
-  // Retrieve a Scanner and set the callback we want to use to be informed when we
-  // have detected a new device.  Specify that we want active scanning and start the
-  // scan to run for 30 seconds.
-  BLEScan* pBLEScan = BLEDevice::getScan();
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-  pBLEScan->setActiveScan(true);
-  pBLEScan->start(30);
+    // Retrieve a Scanner and set the callback we want to use to be informed when we
+    // have detected a new device.  Specify that we want active scanning and start the
+    // scan to run for 30 seconds.
+    BLEScan* pBLEScan = BLEDevice::getScan();
+    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+    pBLEScan->setActiveScan(true);
+    pBLEScan->start(30);
 } // End of setup.
 
 
 // This is the Arduino main loop function.
 void loop() {
-
-  // If the flag "doConnect" is true then we have scanned for and found the desired
-  // BLE Server with which we wish to connect.  Now we connect to it.  Once we are 
-  // connected we set the connected flag to be true.
-  if (doConnect == true) {
-    if (connectToServer(*pServerAddress)) {
-      Serial.println("We are now connected to the BLE Server.");
-      connected = true;
-    } else {
-      Serial.println("We have failed to connect to the server; there is nothin more we will do.");
-    }
-    doConnect = false;
-  }
-
-  WiFiClient client;
-    const int httpPort = 80;
-    if (!client.connect(host, httpPort)) {
-        Serial.println("connection failed");
-        return;
-    }
-
-    // This will send the request to the server
-    /*client.print(String("PUT ") + url + " HTTP/1.1\r\n" +
-                 "Host: " + host + "\r\n" +
-                 "Connection: close\r\n\r\n");*/
-/*
-    client.print(   String("PUT /tablestore HTTP/1.1") + "\r\n" +
-                    "Host: 47.91.46.124:80" + "\r\n" +
-                    "Content-Type: application/json" + "\r\n" +
-                    "Content-Length: 100" + "\r\n" +    
-                    "\r\n" +
-                    "{" + "\r\n" +
-                    "\"acceleration_x\": \"1234\"," + "\r\n" +
-                    "\"acceleration_y\": \"54\"," + "\r\n" +
-                    "\"acceleration_z\": \"343\"" + "\r\n" +
-                    "}" "\r\n" + "\r\n");
-
-    unsigned long timeout = millis();
-    Serial.println("Sent packet");
-
-    Serial.println("Return");
-    while(client.available()) {
-        String line = client.readStringUntil('\r');
-        Serial.print(line);
-    }
-    Serial.println("end return");*/
-    
-  delay(1000); // Delay a second between loops.
+   
+    delay(1000); // Delay a second between loops.
 } // End of loop
 
-http_body() {
+void wifi_alive() {
+    
+}
+
+void http_body() {
     
 }
