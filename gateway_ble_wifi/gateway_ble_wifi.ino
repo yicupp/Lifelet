@@ -124,6 +124,18 @@ char bleBuff[50];
 #define BLE_TIMEOUT 400
 //
 
+//Watchdog 
+#include "esp_system.h"
+
+const int wdtTimeout = 4000;  //time in ms to trigger the watchdog
+hw_timer_t *timer = NULL;
+
+void IRAM_ATTR resetModule() {
+  ets_printf("reboot\n");
+  esp_restart();
+}
+
+//
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
   uint8_t* pData,
@@ -142,6 +154,7 @@ static void notifyCallback(
     }
     bleBuff[length]='\0';
     Serial.println("");
+    timerWrite(timer, 0); //reset timer (feed watchdog)
 }
 
 bool connectToServer(BLEAddress pAddress) {
@@ -150,7 +163,7 @@ bool connectToServer(BLEAddress pAddress) {
     
     pClient  = BLEDevice::createClient();
     Serial.println(" - Created client");
-
+    timerWrite(timer, 0); //reset timer (feed watchdog)
     // Connect to the remove BLE Server.
     if(pClient->connect(pAddress)) {
         Serial.println(" - Connected to server");
@@ -177,7 +190,7 @@ bool connectToServer(BLEAddress pAddress) {
       return false;
     }
     Serial.println(" - Found our characteristic");
-
+    timerWrite(timer, 0); //reset timer (feed watchdog)
     // Read the value of the characteristic.
     std::string value = pRemoteCharacteristic->readValue();
     Serial.print("The characteristic value was: ");
@@ -185,6 +198,7 @@ bool connectToServer(BLEAddress pAddress) {
 
     pRemoteCharacteristic->registerForNotify(notifyCallback);
     pRemoteCharacteristic->writeValue('s', 1);
+    
 }
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
@@ -194,6 +208,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
    * Called for each advertising BLE server.
    */
     void onResult(BLEAdvertisedDevice advertisedDevice) {
+        timerWrite(timer, 0); //reset timer (feed watchdog)
         Serial.print("BLE Advertised Device found: ");
         Serial.print("RSSI: ");
         Serial.print(advertisedDevice.getRSSI());
@@ -216,6 +231,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
         else {
             Serial.println("Not our device");
         }// onResult
+        timerWrite(timer, 0); //reset timer (feed watchdog)
     } // onResult
 }; // MyAdvertisedDeviceCallbacks
 
@@ -226,17 +242,27 @@ void setup() {
 
     BLEDevice::init("");
     connected = false;
+    
+    //watchdog
+    timer = timerBegin(0, 80, true);                  //timer 0, div 80
+    timerAttachInterrupt(timer, &resetModule, true);  //attach callback
+    timerAlarmWrite(timer, wdtTimeout * 1000, false); //set time in us
+    timerAlarmEnable(timer);                          //enable interrupt
+    timerWrite(timer, 0); //reset timer (feed watchdog)
 } // End of setup.
 
 
 // This is the Arduino main loop function.
 int con_count = 0;
 void loop() {
+    timerWrite(timer, 0); //reset timer (feed watchdog)
     if(!connected) {
         BLEScan* pBLEScan = BLEDevice::getScan();
         pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
         pBLEScan->setActiveScan(true);
+        timerWrite(timer, 0); //reset timer (feed watchdog)
         pBLEScan->start(BLE_SCAN_TIME);
+        timerWrite(timer, 0); //reset timer (feed watchdog)
         if(devNum > 0) {
             doConnect = true;
             devNum = 0;
@@ -262,10 +288,11 @@ void loop() {
 
   // If we are connected to a peer BLE Server, update the characteristic each time we are reached
     // with the current time since boot.
+    timerWrite(timer, 0); //reset timer (feed watchdog)
     if (connected) {
         String newValue = "Time since boot: " + String(millis()/1000);
         Serial.println("Setting new characteristic value to \"" + newValue + "\"");
-    
+        timerWrite(timer, 0); //reset timer (feed watchdog)
         // Set the characteristic's value to be the array of bytes that is actually a string.
         //pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
         con_count++;
@@ -281,6 +308,7 @@ void loop() {
     
     //delay(1000); // Delay a second between loops.
     if(connected) {
+        timerWrite(timer, 0); //reset timer (feed watchdog)
         Serial.println("Disconnecting client");
         pClient->disconnect();
         getData = false;
@@ -292,14 +320,16 @@ void loop() {
         connected = false;
         Serial.print("Time ");
         Serial.println(millis()/1000);
+        timerWrite(timer, 0); //reset timer (feed watchdog)
         push_to_cloud();
+        timerWrite(timer, 0); //reset timer (feed watchdog)
     }
     
 } // End of loop
 
 
 void push_to_cloud() {
-
+    
     Serial.println("Starting wifi");
     Serial.print("Connecting to ");
     Serial.println(ssid);
@@ -307,13 +337,14 @@ void push_to_cloud() {
     WiFi.begin(ssid, password);
 
     unsigned long t = millis();
+    timerWrite(timer, 0); //reset timer (feed watchdog)
     while (WiFi.status() != WL_CONNECTED) {
         if(millis()-t >= 500) {
             Serial.print(".");
             t = millis();
         }
     }
-
+    timerWrite(timer, 0); //reset timer (feed watchdog)
     Serial.println("");
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
@@ -321,7 +352,7 @@ void push_to_cloud() {
 
     Serial.print("connecting to ");
     Serial.println(host);
-
+    
     // Use WiFiClient class to create TCP connections
     WiFiClient client;
     const int httpPort = 80;
