@@ -19,8 +19,8 @@ static boolean doConnect = false;
 static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 
-#define BLE_SCAN_TIME 3 //scan time in sec
-#define BLE_SCAN_TIME_RESTART 5 //scan restarts every () ms
+#define BLE_SCAN_TIME 1 //scan time in sec
+#define BLE_SCAN_TIME_RESTART 3000 //scan restarts every () ms
 
 /*int index_count = 0;
 int temp[5]
@@ -179,6 +179,7 @@ bool connectToServer(BLEAddress pAddress) {
     Serial.println(value.c_str());
 
     pRemoteCharacteristic->registerForNotify(notifyCallback);
+    pRemoteCharacteristic->writeValue('s', 1);
 }
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
@@ -198,10 +199,10 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     
           // 
             Serial.print("Found our device!  address: "); 
-            advertisedDevice.getScan()->stop();
-    
+            //advertisedDevice.getScan()->stop();
+            //free(pServerAddress);
             pServerAddress = new BLEAddress(advertisedDevice.getAddress());
-            doConnect = true;
+            //doConnect = true;
         } // Found our server
         else if(advertisedDevice.haveServiceUUID() && advertisedDevice.getServiceUUID().equals(beaconServUUID)) {
             Serial.println("Found beacon! ^^^");
@@ -230,6 +231,7 @@ void loop() {
         pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
         pBLEScan->setActiveScan(true);
         pBLEScan->start(BLE_SCAN_TIME);
+        doConnect = true;
     }
   // If the flag "doConnect" is true then we have scanned for and found the desired
   // BLE Server with which we wish to connect.  Now we connect to it.  Once we are 
@@ -238,6 +240,7 @@ void loop() {
     if (connectToServer(*pServerAddress)) {
       Serial.println("We are now connected to the BLE Server.");
       connected = true;
+      delay(50); //wait for message to be received
     } else {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");
     }
@@ -251,21 +254,25 @@ void loop() {
         Serial.println("Setting new characteristic value to \"" + newValue + "\"");
     
         // Set the characteristic's value to be the array of bytes that is actually a string.
-        pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
+        //pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
         con_count++;
+        //Serial.println("Written");
     }
 
     // Retrieve a Scanner and set the callback we want to use to be informed when we
     // have detected a new device.  Specify that we want active scanning and start the
     // scan to run for 30 seconds.
    
+    Serial.print("Alive at ");
+    Serial.println(millis());
     
     //delay(1000); // Delay a second between loops.
     if(connected) {
+        Serial.println("Disconnecting client");
         pClient->disconnect();
         free(pClient);
         free(pServerAddress);
-        delay(200);
+        delay(50);
         con_count = 0;
         Serial.println("Disconnected");
         connected = false;
