@@ -19,15 +19,25 @@ static boolean doConnect = false;
 static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 
-#define BLE_SCAN_TIME 30 //scan time in sec
-#define BLE_SCAN_TIME_RESTART 1850 //scan restarts every () ms
+#define BLE_SCAN_TIME 3 //scan time in sec
+#define BLE_SCAN_TIME_RESTART 5 //scan restarts every () ms
 
-
+/*int index_count = 0;
+int temp[5]
+void storeData() {
+    index_count++
+    index_count = index_count %5;
+    temp[index_count] = temperature;
+    acc[index_count] = acceleration;
+}*/
 
 //wifi
 #include <WiFi.h>
 
-const char* ssid     = "yicup";
+//const char* ssid     = "yicup";
+//const char* password = "aaaaaaaa";
+
+const char* ssid     = "Terrortown";
 const char* password = "aaaaaaaa";
 
 const char* host = "47.91.46.124";
@@ -36,7 +46,6 @@ char *http_buff[500] = {'\0'};
 // \wifi
 
 //BLE packet structure:
-//customer_num:key:data[10]
 
 //HTTP keys
 #define CODE_HUMIDITY       1
@@ -58,7 +67,35 @@ char *http_buff[500] = {'\0'};
 #define CODE_RSSI           9
 #define  KEY_RSSI           "RSSI"
 
-//
+// Data structures
+
+#define LEN_DEV_BUFF     10 //allocated enough space for 10 devices
+
+#define LEN_MAC             20
+#define LEN_TEMP            50
+#define LEN_HUMIDITY        50
+#define LEN_SVM             50
+#define LEN_VEL_MAG         50
+#define LEN_STEP_COUNT      50
+#define LEN_FALL_DETECTED   50
+#define LEN_DEV_NAME        50
+#define LEN_RSSI            50
+
+struct devData {
+    char             mac[LEN_MAC];
+    char        humidity[LEN_HUMIDITY];
+    char            temp[LEN_TEMP];
+    char             svm[LEN_SVM];
+    char         vel_mag[LEN_VEL_MAG];
+    char      step_count[LEN_STEP_COUNT];
+    char   fall_detected[LEN_FALL_DETECTED];
+    char        dev_name[LEN_DEV_NAME];
+    char            rssi[LEN_RSSI];
+    unsigned long   time_t;
+}devD;
+
+struct devData   devBuf[LEN_DEV_BUFF];
+int    devNum = 0;
 
 //data structure for ble slave
 //device mac
@@ -69,16 +106,18 @@ char *http_buff[500] = {'\0'};
 //fall_detected
 //vel_mag
 //step_count
+//time
 //
 //data struct for beacon
 //device mac
 //device name
 //rssi
+//time
 //
 
 // More BLE
 BLEClient*  pClient;
-
+char bleBuff[50];
 //
 
 static void notifyCallback(
@@ -86,15 +125,18 @@ static void notifyCallback(
   uint8_t* pData,
   size_t length,
   bool isNotify) {
+    int i;
     Serial.print("Notify callback for characteristic ");
     Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
     Serial.print(" of data length ");
     Serial.println(length);
     Serial.println(pBLERemoteCharacteristic->getHandle());
     // Read the value of the characteristic.
-    for (int i=0;i<length;i++) {
+    for (i=0;i<length;i++) {
         Serial.print(char(*(pData+i)));
+        bleBuff[i]=char(*(pData+i));
     }
+    bleBuff[length]='\0';
     Serial.println("");
 }
 
@@ -106,9 +148,12 @@ bool connectToServer(BLEAddress pAddress) {
     Serial.println(" - Created client");
 
     // Connect to the remove BLE Server.
-    pClient->connect(pAddress);
-    Serial.println(" - Connected to server");
-
+    if(pClient->connect(pAddress)) {
+        Serial.println(" - Connected to server");
+    } else {
+        Serial.println("Failed to connect to server");
+        return false;
+    }
     // Obtain a reference to the service we are after in the remote BLE server.
     BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
     if (pRemoteService == nullptr) {
@@ -153,7 +198,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     
           // 
             Serial.print("Found our device!  address: "); 
-            //advertisedDevice.getScan()->stop();
+            advertisedDevice.getScan()->stop();
     
             pServerAddress = new BLEAddress(advertisedDevice.getAddress());
             doConnect = true;
@@ -171,6 +216,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 void setup() {
     Serial.begin(115200);
     Serial.println("Starting Arduino BLE Client application...");
+
     BLEDevice::init("");
     connected = false;
 } // End of setup.
@@ -214,13 +260,17 @@ void loop() {
     // scan to run for 30 seconds.
    
     
-    delay(1000); // Delay a second between loops.
-    if(con_count > 5) {
+    //delay(1000); // Delay a second between loops.
+    if(connected) {
         pClient->disconnect();
+        free(pClient);
+        free(pServerAddress);
         delay(200);
         con_count = 0;
         Serial.println("Disconnected");
         connected = false;
+        Serial.print("Time ");
+        Serial.println(millis()/1000);
         push_to_cloud();
     }
     
@@ -235,9 +285,12 @@ void push_to_cloud() {
 
     WiFi.begin(ssid, password);
 
+    unsigned long t = millis();
     while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
+        if(millis()-t >= 500) {
+            Serial.print(".");
+            t = millis();
+        }
     }
 
     Serial.println("");
@@ -262,7 +315,7 @@ void push_to_cloud() {
 
     Serial.print("Requesting URL: ");
     Serial.println(url);
-
+    Serial.println(bleBuff);
     // This will send the request to the server
     client.print(   String("PUT /tablestore HTTP/1.1") + "\r\n" +
                     "Host: 47.91.46.124:5000" + "\r\n" +
@@ -270,12 +323,12 @@ void push_to_cloud() {
                     "Content-Length: 108" + "\r\n" +    
                     "\r\n" +
                     "{" + "\r\n" +
-                    "\"acceleration_x\": \"1234\"," + "\r\n" +
+                    "\"acceleration_x\": \""/*1234*/ +bleBuff+ "\"," + "\r\n" +
                     "\"acceleration_y\": \"54\"," + "\r\n" +
                     "\"acceleration_z\": \"343\"" + "\r\n" +
                     "\"fall_detection\": \"1\"" + "\r\n" +
                     "}" "\r\n" + "\r\n");
-    unsigned long timeout = millis();
+    unsigned long timeout = millis();/*
     while (client.available() == 0) {
         if (millis() - timeout > 5000) {
             Serial.println(">>> Client Timeout !");
@@ -288,7 +341,7 @@ void push_to_cloud() {
     while(client.available()) {
         String line = client.readStringUntil('\r');
         Serial.print(line);
-    }
+    }*/
 
     Serial.println();
     Serial.println("closing connection");
