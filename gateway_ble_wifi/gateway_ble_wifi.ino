@@ -19,7 +19,7 @@ static boolean doConnect = false;
 static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 
-#define BLE_SCAN_TIME 1 //scan time in sec
+#define BLE_SCAN_TIME 2 //scan time in sec
 #define BLE_SCAN_TIME_RESTART 3000 //scan restarts every () ms
 
 /*int index_count = 0;
@@ -97,6 +97,9 @@ struct devData {
 struct devData   devBuf[LEN_DEV_BUFF];
 int    devNum = 0;
 
+unsigned long getStart = 0;
+bool getData = false;
+
 //data structure for ble slave
 //device mac
 //device name
@@ -118,6 +121,7 @@ int    devNum = 0;
 // More BLE
 BLEClient*  pClient;
 char bleBuff[50];
+#define BLE_TIMEOUT 400
 //
 
 static void notifyCallback(
@@ -150,6 +154,7 @@ bool connectToServer(BLEAddress pAddress) {
     // Connect to the remove BLE Server.
     if(pClient->connect(pAddress)) {
         Serial.println(" - Connected to server");
+        getData = true;
     } else {
         Serial.println("Failed to connect to server");
         return false;
@@ -201,6 +206,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
             Serial.print("Found our device!  address: "); 
             //advertisedDevice.getScan()->stop();
             //free(pServerAddress);
+            devNum++;
             pServerAddress = new BLEAddress(advertisedDevice.getAddress());
             //doConnect = true;
         } // Found our server
@@ -231,7 +237,10 @@ void loop() {
         pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
         pBLEScan->setActiveScan(true);
         pBLEScan->start(BLE_SCAN_TIME);
-        doConnect = true;
+        if(devNum > 0) {
+            doConnect = true;
+            devNum = 0;
+        }
     }
   // If the flag "doConnect" is true then we have scanned for and found the desired
   // BLE Server with which we wish to connect.  Now we connect to it.  Once we are 
@@ -240,7 +249,11 @@ void loop() {
     if (connectToServer(*pServerAddress)) {
       Serial.println("We are now connected to the BLE Server.");
       connected = true;
+      getStart = millis();
       delay(50); //wait for message to be received
+      while(getData == true && millis()-getStart<BLE_TIMEOUT) {
+        
+      }
     } else {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");
     }
@@ -270,6 +283,7 @@ void loop() {
     if(connected) {
         Serial.println("Disconnecting client");
         pClient->disconnect();
+        getData = false;
         free(pClient);
         free(pServerAddress);
         delay(50);

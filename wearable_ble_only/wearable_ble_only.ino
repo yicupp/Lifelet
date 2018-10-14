@@ -8,8 +8,11 @@ int LEDPIN = 13;
 #define SLAVE_NAME      "LIFELETS0001"
 #define BEACON_NAME     "LIFELETB0001"
 
+#define DEVICE_ID           1
+#define DEVICE_NAME         "LLWearable01"
+
 #define SLAVE_SERV_ID    "0x1234"
-#define BEACON_SERV_ID   "0xABCD"
+#define BEACON_SERV_ID   "0xabcd"
 
 #define SLAVE_CHAR_ID       "0x6969"
 #define BEACON_CHAR_ID      "0xDADA"
@@ -23,6 +26,33 @@ int LEDPIN = 13;
 //timeout values
 #define TOS     500000
 #define TOF     500
+
+//HTTP keys
+#define CODE_HUMIDITY       1
+#define  KEY_HUMIDITY       "humidity"
+#define CODE_TEMP           2
+#define  KEY_TEMP           "temp"
+#define CODE_SVM            3
+#define  KEY_SVM            "svm"
+#define CODE_VEL_MAG        4
+#define  KEY_VEL_MAG        "vel_mag"
+#define CODE_STEP_COUNT     5
+#define  KEY_STEP_COUNT     "step_count"
+#define CODE_FALL_DETECTED  6
+#define  KEY_FALL_DETECTED  "fall_detected"
+#define CODE_GATEWAY_NAME   7
+#define  KEY_GATEWAY_NAME   "gateway_name"
+#define CODE_DEV_NAME       8
+#define  KEY_DEV_NAME       "dev_name"
+#define CODE_RSSI           9
+#define  KEY_RSSI           "RSSI"
+
+#define DATA_FIELD_NUM      6   //number of data fields 
+#define DATA_ENTRY_NUM      8   //number of data entriess
+#define DATA_ENTRY_SIZE     1   //number of bytes per data entry
+
+#define unsigned char data[DATA_FIELD_NUM][DATA_COLLECT_NUM] = {'\0','\0'};
+
 
 // When a command is entered in to the serial monitor on the computer 
 // the Arduino will relay it to the ESP8266
@@ -335,6 +365,10 @@ void loop()
         while (hmSlave.available() > 0) {
             char inByte = hmSlave.read();
             Serial.write(inByte);
+            if(inByte == 'S' || inByte == 's') {
+                BLEsendData();
+                BLEdisconnect();
+            }
         } 
         Serial.write('\n');
     }
@@ -371,4 +405,35 @@ void loop()
             hmBeacon.listen();
         }
     }
+}
+
+void BLEsendData() {
+    //send id, entry size and name
+    sprintf(usrBuff,"%i|%i|%s",DEVICE_ID,DATA_ENTRY_SIZE,DEVICE_NAME);
+    hmSlave.write(usrBuff);
+    delay(7);
+    hmSlave.write(usrBuff);
+    delay(7);
+    hmSlave.write(usrBuff);
+    delay(7);
+    hmSlave.write(usrBuff);
+    delay(7);
+    hmSlave.write(usrBuff);
+    delay(7);
+    hmSlave.write(usrBuff);
+    delay(7);
+    //send data packets
+}
+
+//disconnect from the master
+void BLEdisconnect() {
+    delay(25);
+    hmSlave.write('C'); //politely inform master of disconnection
+    delay(25);
+    hmSlave.write("AT"); //pull the plug on the hm10
+}
+
+void BLEformData(int type) {
+    //Packet structure
+    //ID (1B) Type (1B) Data (7x 2B)    
 }
