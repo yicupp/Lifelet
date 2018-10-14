@@ -20,7 +20,7 @@ static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 
 #define BLE_SCAN_TIME 2 //scan time in sec
-#define BLE_SCAN_TIME_RESTART 3000 //scan restarts every () ms
+#define BLE_SCAN_TIME_RESTART 3500 //scan restarts every () ms
 
 /*int index_count = 0;
 int temp[5]
