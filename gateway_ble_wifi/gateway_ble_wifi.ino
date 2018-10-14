@@ -81,6 +81,8 @@ char *http_buff[500] = {'\0'};
 #define LEN_DEV_NAME        50
 #define LEN_RSSI            50
 
+#define BLE_BEACON_TIMEOUT  30000//time in ms before advertiser is discarded
+
 struct devData {
     char             mac[LEN_MAC];
     char        humidity[LEN_HUMIDITY];
@@ -91,7 +93,10 @@ struct devData {
     char   fall_detected[LEN_FALL_DETECTED];
     char        dev_name[LEN_DEV_NAME];
     char            rssi[LEN_RSSI];
-    unsigned long   time_t;
+    unsigned int  dev_id;
+    unsigned long time_t;
+    char         isSlave;
+    char        isBeacon;
 }devD;
 
 struct devData   devBuf[LEN_DEV_BUFF];
@@ -122,6 +127,8 @@ bool getData = false;
 BLEClient*  pClient;
 char bleBuff[50];
 #define BLE_TIMEOUT 400
+int con_count = 0; //number of opssible connections
+int adv_count = 0; //number of detected advertisements
 //
 
 //Watchdog 
@@ -228,6 +235,8 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
         } // Found our server
         else if(advertisedDevice.haveServiceUUID() && advertisedDevice.getServiceUUID().equals(beaconServUUID)) {
             Serial.println("Found beacon! ^^^");
+            adv_count++;
+            BLEstoreAdv(advertisedDevice);
         } // Found a beacon
         else {
             Serial.println("Not our device");
@@ -254,7 +263,6 @@ void setup() {
 
 
 // This is the Arduino main loop function.
-int con_count = 0;
 void loop() {
     timerWrite(timer, 0); //reset timer (feed watchdog)
     if(!connected) {
@@ -306,6 +314,8 @@ void loop() {
    
     Serial.print("Alive at ");
     Serial.println(millis());
+    con_count = 0;
+    adv_count = 0;
     
     //delay(1000); // Delay a second between loops.
     if(connected) {
@@ -401,4 +411,58 @@ void push_to_cloud() {
     Serial.println("closing connection");
     
     WiFi.disconnect();
+}
+
+//Structure for reference
+/*
+struct devData {
+    char             mac[LEN_MAC];
+    char        humidity[LEN_HUMIDITY];
+    char            temp[LEN_TEMP];
+    char             svm[LEN_SVM];
+    char         vel_mag[LEN_VEL_MAG];
+    char      step_count[LEN_STEP_COUNT];
+    char   fall_detected[LEN_FALL_DETECTED];
+    char        dev_name[LEN_DEV_NAME];
+    char            rssi[LEN_RSSI];
+    char         isSlave;
+    char        isBeacon;
+    unsigned int  dev_id;
+    unsigned long time_t;
+}devD;
+ */
+
+void BLEstoreAdv(BLEAdvertisedDevice advDev) {
+    int i = 0;
+    int id = String(advDev.getName().c_str()[8]).toInt();
+    Serial.print("Storing advertisement data of id");
+    Serial.println(id);
+    int adv_entry = adv_count-1;
+
+    devDataClean(adv_entry);
+    devData *buffToAdd = &devBuf[i];
+
+    buffToAdd->dev_id=id;
+    buffToAdd->time_t=millis();
+    buffToAdd->isBeacon = 1;
+    sprintf(buffToAdd->rssi,"%d",advDev.getRSSI());
+    sprintf(buffToAdd->dev_name,"%s",advDev.getName().c_str());
+}
+
+//cleans the ith entry of the data table
+void devDataClean(int i) {
+    devData* bufToClean = &devBuf[i];
+    bufToClean->mac[0]='\0';
+    bufToClean->humidity[0]='\0';
+    bufToClean->temp[0]='\0';
+    bufToClean->svm[0]='\0';
+    bufToClean->vel_mag[0]='\0';
+    bufToClean->step_count[0]='\0';
+    bufToClean->fall_detected[0]='\0';
+    bufToClean->dev_name[0]='\0';
+    bufToClean->rssi[0]='\0';
+    bufToClean->isBeacon = 0;
+    bufToClean->isSlave = 0;
+    bufToClean->dev_id=0;
+    bufToClean->time_t=0;
 }
