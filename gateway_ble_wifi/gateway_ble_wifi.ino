@@ -324,6 +324,7 @@ void loop() {
         timerWrite(timer, 0); //reset timer (feed watchdog)
         push_to_cloud();
         timerWrite(timer, 0); //reset timer (feed watchdog)
+        connected = false;
     }
     
 } // End of loop

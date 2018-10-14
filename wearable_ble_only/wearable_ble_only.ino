@@ -50,9 +50,9 @@ int LEDPIN = 13;
 #define DATA_FIELD_NUM      6   //number of data fields 
 #define DATA_ENTRY_NUM      8   //number of data entriess
 #define DATA_ENTRY_SIZE     1   //number of bytes per data entry
+#define DATA_SIZE           (2+DATA_ENTRY_NUM*DATA_ENTRY_SIZE)*DATA_FIELD_NUM
 
-#define unsigned char data[DATA_FIELD_NUM][DATA_COLLECT_NUM] = {'\0','\0'};
-
+unsigned char sensorData[DATA_FIELD_NUM][DATA_ENTRY_NUM] = {'\0','\0'};
 
 // When a command is entered in to the serial monitor on the computer 
 // the Arduino will relay it to the ESP8266
@@ -155,7 +155,7 @@ int ar_cmp( char* ar1, char* ar2, int n)
 void setup() {
     char msg_buff[100] = {0};
     char msg_size = 100;
-    
+
     pinMode(LEDPIN, OUTPUT);
  
     Serial.begin(9600);     // communication with the host computer
@@ -292,6 +292,18 @@ void setup() {
     Serial.println( "PERIPH INIT COMPLETE" );
     Serial.println( "**********************************************" );
 
+    Serial.println("Test data:");
+    for(int x=0;x<DATA_FIELD_NUM;x++) {
+        char start = 'a'+x*DATA_ENTRY_NUM;
+        Serial.print(x);
+        Serial.print('|');
+        for(char y=0;y<DATA_ENTRY_NUM;y++) {
+            sensorData[x][y]=start+y;
+            Serial.print(char(sensorData[x][y]));
+        }
+        Serial.println();
+    }
+
     Serial.println("Starting loop");
     Serial.println( "+++++++++++++++++++++++++++++++++++++++++++++++" );
 }
@@ -411,29 +423,27 @@ void BLEsendData() {
     //send id, entry size and name
     sprintf(usrBuff,"%i|%i|%s",DEVICE_ID,DATA_ENTRY_SIZE,DEVICE_NAME);
     hmSlave.write(usrBuff);
-    delay(7);
-    hmSlave.write(usrBuff);
-    delay(7);
-    hmSlave.write(usrBuff);
-    delay(7);
-    hmSlave.write(usrBuff);
-    delay(7);
-    hmSlave.write(usrBuff);
-    delay(7);
-    hmSlave.write(usrBuff);
-    delay(7);
+    delay(5);
+    
     //send data packets
+    //BLEformData();
 }
 
 //disconnect from the master
 void BLEdisconnect() {
-    delay(25);
+    delay(5);
     hmSlave.write('C'); //politely inform master of disconnection
     delay(25);
     hmSlave.write("AT"); //pull the plug on the hm10
 }
 
-void BLEformData(int type) {
+void BLEformData() {
     //Packet structure
-    //ID (1B) Type (1B) Data (7x 2B)    
+    //ID (1B) Type (1B) Data (7x 1B)    
+    for(unsigned char i=0;i<DATA_FIELD_NUM;i++) {
+        hmSlave.write(i);
+        hmSlave.write('|');
+        hmSlave.write(sensorData[i],DATA_ENTRY_NUM*DATA_ENTRY_SIZE);
+        delay(5);
+    }
 }
