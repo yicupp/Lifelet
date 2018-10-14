@@ -180,6 +180,7 @@ bool connectToServer(BLEAddress pAddress) {
         Serial.println("Failed to connect to server");
         return false;
     }
+    timerWrite(timer, 0); //reset timer (feed watchdog)
     // Obtain a reference to the service we are after in the remote BLE server.
     BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
     if (pRemoteService == nullptr) {
@@ -189,7 +190,7 @@ bool connectToServer(BLEAddress pAddress) {
     }
     Serial.println(" - Found our service");
 
-
+    timerWrite(timer, 0); //reset timer (feed watchdog)
     // Obtain a reference to the characteristic in the service of the remote BLE server.
     pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
     if (pRemoteCharacteristic == nullptr) {
@@ -206,7 +207,7 @@ bool connectToServer(BLEAddress pAddress) {
 
     pRemoteCharacteristic->registerForNotify(notifyCallback);
     pRemoteCharacteristic->writeValue('s', 1);
-    
+    timerWrite(timer, 0); //reset timer (feed watchdog)
 }
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
@@ -325,7 +326,7 @@ void loop() {
         getData = false;
         free(pClient);
         free(pServerAddress);
-        delay(50);
+        delay(100);
         con_count = 0;
         Serial.println("Disconnected");
         connected = false;

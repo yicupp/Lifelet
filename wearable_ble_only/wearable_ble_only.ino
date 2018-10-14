@@ -423,7 +423,7 @@ void BLEsendData() {
     //send id, entry size and name
     sprintf(usrBuff,"%i|%i|%s",DEVICE_ID,DATA_ENTRY_SIZE,DEVICE_NAME);
     hmSlave.write(usrBuff);
-    delay(5);
+    delay(10);
     
     //send data packets
     BLEformData();
@@ -431,7 +431,7 @@ void BLEsendData() {
 
 //disconnect from the master
 void BLEdisconnect() {
-    delay(5);
+    delay(10);
     hmSlave.write('C'); //politely inform master of disconnection
     delay(25);
     hmSlave.write("AT"); //pull the plug on the hm10
@@ -444,6 +444,6 @@ void BLEformData() {
         hmSlave.write(i);
         hmSlave.write('|');
         hmSlave.write(sensorData[i],DATA_ENTRY_NUM*DATA_ENTRY_SIZE);
-        delay(5);
+        delay(10);
     }
 }
