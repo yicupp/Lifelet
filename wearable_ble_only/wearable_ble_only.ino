@@ -426,7 +426,7 @@ void BLEsendData() {
     delay(5);
     
     //send data packets
-    //BLEformData();
+    BLEformData();
 }
 
 //disconnect from the master
