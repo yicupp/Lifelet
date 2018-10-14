@@ -127,7 +127,7 @@ char bleBuff[50];
 //Watchdog 
 #include "esp_system.h"
 
-const int wdtTimeout = 4000;  //time in ms to trigger the watchdog
+const int wdtTimeout = 3000;  //time in ms to trigger the watchdog
 hw_timer_t *timer = NULL;
 
 void IRAM_ATTR resetModule() {
@@ -155,6 +155,7 @@ static void notifyCallback(
     bleBuff[length]='\0';
     Serial.println("");
     timerWrite(timer, 0); //reset timer (feed watchdog)
+    getStart = millis();//reset timeout timer
 }
 
 bool connectToServer(BLEAddress pAddress) {
@@ -276,7 +277,7 @@ void loop() {
       Serial.println("We are now connected to the BLE Server.");
       connected = true;
       getStart = millis();
-      delay(50); //wait for message to be received
+      delay(150); //wait for message to be received
       while(getData == true && millis()-getStart<BLE_TIMEOUT) {
         
       }
