@@ -12,7 +12,7 @@ int LEDPIN = 13;
 #define DEVICE_NAME         "LLWearable01"
 
 #define SLAVE_SERV_ID    "0x1234"
-#define BEACON_SERV_ID   "0xabcd"
+#define BEACON_SERV_ID   "0xABCD"
 
 #define SLAVE_CHAR_ID       "0x6969"
 #define BEACON_CHAR_ID      "0xDADA"
@@ -21,7 +21,7 @@ int LEDPIN = 13;
 #define BEACON_MEAS_POW     "0xC5"
 
 #define RENEW           
-#define RENEW_DELAY     2500
+#define RENEW_DELAY     2000
 
 //timeout values
 #define TOS     500000
@@ -94,6 +94,7 @@ void beaSend( char *cmd ) {
 int slvCmd( char *cmd, int to_s, int to_f ) {
     char msg_buff[50] = {0};
     char msg_size = 50;
+    delay(50);
 
 #ifdef DEBUG
         Serial.print( "AT_cmd ");
@@ -114,7 +115,8 @@ int slvCmd( char *cmd, int to_s, int to_f ) {
 int beaCmd( char *cmd, int to_s, int to_f ) {
     char msg_buff[50] = {0};
     char msg_size = 50;
-
+    delay(50);
+    
 #ifdef DEBUG
         Serial.print( "AT_cmd ");
         Serial.print( cmd );
@@ -194,6 +196,8 @@ void setup() {
     Serial.println("Restoring to default settings");
     beaCmd( "RENEW", TOS, TOF );
     Serial.println( "" );
+    slvCmd( "RENEW", TOS, TOF );
+    Serial.println( "" );
     delay(RENEW_DELAY);
 #endif
 
@@ -248,10 +252,10 @@ void setup() {
     Serial.println( "" );
 
 #ifdef RENEW
-    Serial.println("Restoring to default settings");
+    /*Serial.println("Restoring to default settings");
     slvCmd( "RENEW", TOS, TOF );
     Serial.println( "" );
-    delay(RENEW_DELAY);
+    delay(RENEW_DELAY);*/
 #endif
 
     Serial.println( "Setting power on mode" );
@@ -421,7 +425,7 @@ void loop()
 
 void BLEsendData() {
     //send id, entry size and name
-    sprintf(usrBuff,"%i|%i|%s",DEVICE_ID,DATA_ENTRY_SIZE,DEVICE_NAME);
+    sprintf(usrBuff,"I%i|%i|%s",DEVICE_ID,DATA_ENTRY_SIZE,DEVICE_NAME);
     hmSlave.write(usrBuff);
     delay(10);
     
@@ -441,6 +445,8 @@ void BLEformData() {
     //Packet structure
     //ID (1B) Type (1B) Data (7x 1B)    
     for(unsigned char i=0;i<DATA_FIELD_NUM;i++) {
+        hmSlave.write(DEVICE_ID);
+        hmSlave.write('|');
         hmSlave.write(i);
         hmSlave.write('|');
         hmSlave.write(sensorData[i],DATA_ENTRY_NUM*DATA_ENTRY_SIZE);

@@ -50,20 +50,33 @@ char *http_buff[500] = {'\0'};
 //HTTP keys
 #define CODE_HUMIDITY       1
 #define  KEY_HUMIDITY       "humidity"
+#define SCALE_HUMIDITY      1
+
 #define CODE_TEMP           2
 #define  KEY_TEMP           "temp"
+#define SCALE_TEMP          1
+
 #define CODE_SVM            3
 #define  KEY_SVM            "svm"
+#define SCALE_SVM           1
+
 #define CODE_VEL_MAG        4
 #define  KEY_VEL_MAG        "vel_mag"
+#define SCALE_VEL_MAG       1
+
 #define CODE_STEP_COUNT     5
 #define  KEY_STEP_COUNT     "step_count"
+#define SCALE_STEP_COUNT    1
+
 #define CODE_FALL_DETECTED  6
 #define  KEY_FALL_DETECTED  "fall_detected"
+
 #define CODE_GATEWAY_NAME   7
 #define  KEY_GATEWAY_NAME   "gateway_name"
+
 #define CODE_DEV_NAME       8
 #define  KEY_DEV_NAME       "dev_name"
+
 #define CODE_RSSI           9
 #define  KEY_RSSI           "RSSI"
 
@@ -161,6 +174,7 @@ static void notifyCallback(
     }
     bleBuff[length]='\0';
     Serial.println("");
+    BLEstoreData(pData,length);
     timerWrite(timer, 0); //reset timer (feed watchdog)
     getStart = millis();//reset timeout timer
 }
@@ -433,6 +447,73 @@ struct devData {
 }devD;
  */
 
+/*
+ * #define CODE_HUMIDITY       1
+#define  KEY_HUMIDITY       "humidity"
+#define CODE_TEMP           2
+#define  KEY_TEMP           "temp"
+#define CODE_SVM            3
+#define  KEY_SVM            "svm"
+#define CODE_VEL_MAG        4
+#define  KEY_VEL_MAG        "vel_mag"
+#define CODE_STEP_COUNT     5
+#define  KEY_STEP_COUNT     "step_count"
+#define CODE_FALL_DETECTED  6
+#define  KEY_FALL_DETECTED  "fall_detected"
+#define CODE_GATEWAY_NAME   7
+#define  KEY_GATEWAY_NAME   "gateway_name"
+#define CODE_DEV_NAME       8
+#define  KEY_DEV_NAME       "dev_name"
+#define CODE_RSSI           9
+#define  KEY_RSSI           "RSSI"
+*/
+
+void BLEstoreData(unsigned char *dat, int len) {
+    //data might be the wearable name
+    int i=0;
+    int index = 0;
+    int id = 0;
+    float scale = 1;
+    //device info
+    if(dat[0]=='I') {
+        id = dat[1];
+        int entry_size = dat[3];
+        
+        Serial.print("ID: ");
+        Serial.print(char(id));
+        Serial.print(" Device name: ");
+        for(int x=5;x<len;x++) Serial.write(dat[x]);
+        Serial.println();
+    }
+    else { //find the scaler value
+        switch(dat[0]){
+            case CODE_HUMIDITY:
+                scale = SCALE_HUMIDITY;
+            break;
+            case CODE_TEMP:
+                scale = SCALE_TEMP;
+            break;
+            case CODE_SVM:
+                scale = SCALE_SVM;
+            break;
+            case CODE_VEL_MAG:
+                scale = SCALE_VEL_MAG;
+            break;
+            case CODE_STEP_COUNT:
+                scale = SCALE_STEP_COUNT;
+            break;
+            case CODE_FALL_DETECTED:
+            break;
+            case CODE_GATEWAY_NAME:
+            break;
+            case CODE_DEV_NAME:
+            break;
+            case CODE_RSSI:
+            break;
+        }
+    }
+}
+
 void BLEstoreAdv(BLEAdvertisedDevice advDev) {
     int i = 0;
     int id = String(advDev.getName().c_str()[8]).toInt();
@@ -440,6 +521,14 @@ void BLEstoreAdv(BLEAdvertisedDevice advDev) {
     Serial.println(id);
     int adv_entry = adv_count-1;
 
+    //find the index
+    while(i<adv_entry) {
+        if(id == devBuf[i].dev_id) break;
+        i++;
+    }
+
+    Serial.print("Storing advertisement in index ");
+    Serial.println(i);
     devDataClean(adv_entry);
     devData *buffToAdd = &devBuf[i];
 
