@@ -22,9 +22,9 @@
 #define CODE_GATEWAY_NAME   7
 #define  KEY_GATEWAY_NAME   "gateway_name"
 #define CODE_DEV_NAME       8
-#define  KEY_DEV_NAME       "dev_name"
+#define  KEY_DEV_NAME       "device_name"
 #define CODE_RSSI           9
-#define  KEY_RSSI           "RSSI"
+#define  KEY_RSSI           "rssi_value"
 
 #define RENEW           
 #define RENEW_DELAY     2000
@@ -325,7 +325,7 @@ struct bacEntry {
     int     id  = 0;
     unsigned long t = 0;
     char    idStr[BAC_ID_LEN]={'\0'};
-    char    rssiStr[4]={'\0'};
+    char    rssiStr[5]={'\0'};
 };
 
 bacEntry bacData[BAC_NUM_DEV];
@@ -421,7 +421,7 @@ int addEntry() {
     bacData[i].id=id;
     bacData[i].rssi=atoi(buf5);
     bacData[i].t=millis();
-    memcpy(bacData[i].rssiStr,buf5,3);
+    memcpy(bacData[i].rssiStr,buf5,4);
     memcpy(bacData[i].idStr,buf1,8);
     Serial.print("Logged at index");
     Serial.print(i);
@@ -530,22 +530,45 @@ int wifiTask() {
 char contLenStr[11] = {'\0'};
 
 int wifiSendBacPac(int i) {
-    int contLen = 15+BAC_CONST_SIZE+40;
+    int contLen = 15+BAC_CONST_SIZE+50+15;
     sprintf(contLenStr,"%d",contLen); 
        
     client.print( String(
-"PUT /tablestore HTTP/1.1")+"\r\n"+
+"PUT /tablestore1 HTTP/1.1")+"\r\n"+
 "Host: "+host+":80\r\n"+
 "Content-Type: application/json"+"\r\n"+
-"Connection: keep-alive"+"\r\n"+
+"Connection: close"+"\r\n"+
 "Content-Length: "+contLenStr+"\r\n"+
 "\r\n"+
 "{"+"\r\n"+
-"\""+KEY_DEV_NAME+"\": \""+String(bacData[i].mac)+WEARABLE_BASE_NAME+String(bacData[i].idStr)+"\"\r\n"+
-"\""+KEY_RSSI+"\": \""+String(bacData[i].rssiStr)+"\"\r\n"+
-"\""+KEY_GATEWAY_NAME+"\": \""+GATEWAY_BASE_NAME+"\"\r\n"+
+"\""+KEY_GATEWAY_NAME+"\" : \""+GATEWAY_BASE_NAME+"\"\r\n"+
+"\""+KEY_DEV_NAME+"\" : \""+String(bacData[i].mac)+WEARABLE_BASE_NAME+String(bacData[i].idStr)+",\"\r\n"+
+"\"data_type\" : \"rssi\"\r\n"+
+"\""+KEY_RSSI+"\" : \""+String(bacData[i].rssiStr)+"\",\r\n"+
 "}\r\n\r\n");
 
+Serial.println( String(
+"PUT /tablestore1 HTTP/1.1")+"\r\n"+
+"Host: "+host+":80\r\n"+
+"Content-Type: application/json"+"\r\n"+
+"Connection: close"+"\r\n"+
+"Content-Length: "+contLenStr+"\r\n"+
+"\r\n"+
+"{"+"\r\n"+
+"\""+KEY_GATEWAY_NAME+"\" : \""+GATEWAY_BASE_NAME+"\"\r\n"+
+"\""+KEY_DEV_NAME+"\" : \""+String(bacData[i].mac)+WEARABLE_BASE_NAME+String(bacData[i].idStr)+",\"\r\n"+
+"\"data_type\" : \"rssi\"\r\n"+
+"\""+KEY_RSSI+"\" : \""+String(bacData[i].rssiStr)+"\",\r\n"+
+"}\r\n\r\n");
+
+while (client.available() == 0) {}
+
+    // Read all the lines of the reply from server and print them to Serial
+    while(client.available()) {
+        String line = client.readStringUntil('\r');
+        Serial.print(line);
+    }
+    
     return 0;
 }
 int wifiConnect() {
