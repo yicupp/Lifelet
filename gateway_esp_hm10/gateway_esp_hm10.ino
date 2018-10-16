@@ -208,7 +208,7 @@ void setup() {
     Serial.println( "" );
     slvCmd("SCAN1", TOS_SLV, TOF_SLV);
     Serial.println( "" );
-
+    Serial.setTimeout(25);
     sysClk=millis();
     slvSchedT=millis()+slvSchedT;
     wifiSchedT=millis()+wifiSchedT;
@@ -302,13 +302,29 @@ void serialCmd() {
     }
 }
 
+#define DISCONNECTED    2
+#define SCANNING        0
+#define CONNECTED       1
+unsigned long BLEconnectTimer = 0;
+#define BLE_SCAN_TIMEOUT    500
+#define BLE_CONN_TIMEOUT    500
+int BLEstate = DISCONNECTED;
+
 //Slave task: read data coming into the port OR connect to device
 int slvTask() {
-    //if not connected, connect
-    if(!BLEconnected) {
-        
+    return 0;
+    //if not connected, start scan
+    if(BLEstate==DISCONNECTED) {
+        hmSlave.write("AT+DISC?");
+        BLEconnectTimer = millis();
     }
-    else { //read all data from buffer
+    else if(BLEstate == SCANNING){ //if we're currently scanning
+        //scan timed out
+        if(millis()-BLEconnectTimer>BLE_SCAN_TIMEOUT) {
+            
+        }
+    }
+    else if(BLEstate == CONNECTED) {
         
     }
 }
@@ -518,6 +534,7 @@ int wifiTask() {
         for(int i=0;i<bacNumID;i++) {
             wifiSendBacPac(i);
         }
+        Serial.println("Beacon logs sent");
         bacNumID=0;
     }
     else {
@@ -532,12 +549,17 @@ char contLenStr[11] = {'\0'};
 int wifiSendBacPac(int i) {
     int contLen = 15+BAC_CONST_SIZE+50+19;
     sprintf(contLenStr,"%d",contLen); 
-       
+
+    while(client.available()) {
+        String line = client.readStringUntil('\r');
+        Serial.print(line);
+    }
+      
     client.print( String(
 "PUT /tablestore1 HTTP/1.1")+"\r\n"+
 "Host: "+host+":80\r\n"+
 "Content-Type: application/json"+"\r\n"+
-"Connection: close"+"\r\n"+
+"Connection: keep-alive"+"\r\n"+
 "Content-Length: "+contLenStr+"\r\n"+
 "\r\n"+
 "{"+"\r\n"+
@@ -546,15 +568,15 @@ int wifiSendBacPac(int i) {
 "\"data_type\" : \"rssi\",\r\n"+
 "\""+KEY_RSSI+"\" : \""+String(bacData[i].rssiStr)+"\"\r\n"+
 "}\r\n\r\n");
-
-while (client.available() == 0) {}
+/*
+    while (client.available() == 0) {}
 
     // Read all the lines of the reply from server and print them to Serial
     while(client.available()) {
         String line = client.readStringUntil('\r');
         Serial.print(line);
     }
-    
+*/
     return 0;
 }
 int wifiConnect() {
