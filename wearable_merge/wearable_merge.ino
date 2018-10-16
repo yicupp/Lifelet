@@ -77,20 +77,20 @@ int LEDPIN = 13;
 #define SLAVE_MEAS_POW      "0xC5"
 #define BEACON_MEAS_POW     "0xC5"
 
-#define SLAVE_ADV_UUID0     "69696969"
-#define SLAVE_ADV_UUID1     "01020304"
-#define SLAVE_ADV_UUID2     "40302010"
-#define SLAVE_ADV_UUID3     "69696969"
+#define SLAVE_ADV_UUID0     "AAAAAAAA" //Type is slave
+#define SLAVE_ADV_UUID1     "00000001" //id is 1
+#define SLAVE_ADV_UUID2     "00000001"
+#define SLAVE_ADV_UUID3     "AAAAAAAA"
 
-#define SLAVE_ADV_MAJOR     "00000001"
+#define SLAVE_ADV_MAJOR     "11111111"
 #define SLAVE_ADV_MINOR     "00000001"
 
-#define BEACON_ADV_UUID0    "AAAAAAAA"
-#define BEACON_ADV_UUID1    "0A0B0C0D"
-#define BEACON_ADV_UUID2    "D0C0B0A0"
-#define BEACON_ADV_UUID3    "AAAAAAAA"
+#define BEACON_ADV_UUID0    "BBBBBBBB" //type is beacon
+#define BEACON_ADV_UUID1    "00000001" //id is 1
+#define BEACON_ADV_UUID2    "00000001"
+#define BEACON_ADV_UUID3    "BBBBBBBB"
 
-#define BEACON_ADV_MAJOR    "00000001"
+#define BEACON_ADV_MAJOR    "22222222"
 #define BEACON_ADV_MINOR    "00000001"
 
 #define RENEW           

@@ -1,10 +1,10 @@
 #include <HardwareSerial.h>
 
 //timeout values
-#define TOS_BAC     1000
-#define TOF_BAC     250
-#define TOS_SLV     1000
-#define TOF_SLV     250
+#define TOS_BAC     100
+#define TOF_BAC     50
+#define TOS_SLV     100
+#define TOF_SLV     50
 
 //HTTP keys
 #define CODE_HUMIDITY       1
@@ -30,24 +30,22 @@
 #define RENEW_DELAY     2000
 #define DEBUG
 
+//#define DEBUG_TASK
+
 HardwareSerial hmSlave(1);
 HardwareSerial hmBacon(2);
 
-#define CMD_BUF_LEN 50
+#define CMD_BUF_LEN 500
 static char cmdBuf[CMD_BUF_LEN] = {'\0'};
+
+#define BLE_RES_FILTER "4C000215" //manufacturer id
 
 void bacCmd(char * cmd, unsigned long tos, unsigned long tof) {
     int i = 0;
     //send at command
     sprintf(cmdBuf,"AT+%s",cmd);
     hmBacon.write(cmdBuf);
-/*    while(cmdBuf[i]!='\0') {
-        hmBacon.write(cmdBuf[i]);
-        Serial.write(cmdBuf[i]);
-        Serial.println(millis());
-        i++;
-    }*/
-    //hmBacon.write(cmdBuf);
+
     Serial.print("BAC sent ");
     Serial.write(cmdBuf);
     unsigned long t=millis();
@@ -75,10 +73,7 @@ void slvCmd(char * cmd, unsigned long tos, unsigned long tof) {
     int i=0;
     sprintf(cmdBuf,"AT+%s",cmd);
     hmSlave.write(cmdBuf);
-/*    while(cmdBuf[i]!='\0') {
-        hmSlave.write(cmdBuf[i]);
-        i++;
-    }*/
+
     Serial.print("SLV sent ");
     Serial.println(cmdBuf);
     unsigned long t=millis();
@@ -117,6 +112,11 @@ bool slvOK() {
     }
     return false;
 }
+unsigned long int sysClk;
+unsigned long int slvSchedT;
+unsigned long int wifiSchedT;
+unsigned long int bacSchedT;
+unsigned long int bacSchedR;
 
 void setup() {
     hmSlave.begin(9600, SERIAL_8N1, 16, 17);
@@ -179,6 +179,23 @@ void setup() {
     Serial.println( "" );
     slvCmd("ROLE1", TOS_SLV, TOF_SLV);
     Serial.println( "" );
+
+    Serial.println( "Show name SHOW1" );
+    bacCmd("SHOW1", TOS_BAC, TOF_BAC);
+    Serial.println( "" );
+    slvCmd("SHOW1", TOS_SLV, TOF_SLV);
+    Serial.println( "" );
+
+    Serial.println( "Discovery time" );
+    bacCmd("SCAN1", TOS_BAC, TOF_BAC);
+    Serial.println( "" );
+    slvCmd("SCAN1", TOS_SLV, TOF_SLV);
+    Serial.println( "" );
+
+    sysClk=millis();
+    slvSchedT=millis()+slvSchedT;
+    wifiSchedT=millis()+wifiSchedT;
+    bacSchedT=millis()+bacSchedT;
 }
 
 unsigned long tl = 0;
@@ -187,39 +204,54 @@ char usrBuf[50]={'\0'};
 bool BLEconnected = false;
 bool WIFIconnected = false;
 
-void loop() {
-//    serialCmd();
-    
-    
-}
 
-void slvRead() {
+
+#define SLAVE_PERIOD    70
+#define WIFI_PERIOD     200
+#define BACON_PERIOD    1200
+#define BACON_READ_PERIOD 200
+
+#define SLV_BUF_SIZE    500
+#define BAC_BUF_SIZE    500
+#define WIFI_BUF_SIZE   750
+
+char slvBuf[SLV_BUF_SIZE]={'\0'};
+char bacBuf[BAC_BUF_SIZE]={'\0'};
+char wifiBuf[WIFI_BUF_SIZE]={'\0'};
+
+#define BEACON_ADV_UUID0    "BBBBBBBB" //type is beacon
+
+
+
+
+int slvRead(char *buf) {
+    int i=0;
     while (hmSlave.available() > 0) {
-        //Serial.write(hmSlave.read());//Serial.println(millis());
-        tl = millis();
-        int i=0;
-        while(millis()-tl<2 && hmSlave.available()>0) {
-            usrBuf[i]=hmSlave.read();
-            i++;
-        }
-        usrBuf[i]='\0';
-        Serial.println(usrBuf);
+        buf[i]=hmSlave.read();
+        i++;  
     }
+    buf[i]='\0';
+    Serial.println("--Bacon read buffer--");
+    Serial.println(buf);
+    Serial.println("---------End---------");
+    return i;
 }
 
-void bacRead() {
+int bacRead(char *buf) {
     int i = 0;
-    while(hmBacon.available() > 0 && hmBacon.available()>0) {
-        //Serial.write(hmBacon.read());//Serial.println(millis());
-        tl = millis();
-        i=0;
-        while(millis()-tl<2) {
-            usrBuf[i]=hmBacon.read();
-            i++;
-        }
-        usrBuf[i]='\0';
-        Serial.println(usrBuf);
+#ifdef DEBUG_TASK
+    Serial.println("bacRead::");
+#endif
+    while(hmBacon.available() > 0) {
+        buf[i]=hmBacon.read();
+        i++;
     }
+    buf[i]='\0';
+    Serial.println("--Bacon read buffer--");
+    Serial.println(buf);
+    Serial.println(i);
+    Serial.println("---------End---------");
+    return i;
 }
 
 void serialCmd() {
@@ -235,7 +267,7 @@ void serialCmd() {
         usrBuf[i]='\0';
         Serial.println(usrBuf);
     }
-    while(hmBacon.available() > 0 && hmBacon.available()>0) {
+    while(hmBacon.available() > 0) {
         //Serial.write(hmBacon.read());//Serial.println(millis());
         tl = millis();
         i=0;
@@ -251,4 +283,202 @@ void serialCmd() {
         if(in == 'b' || in == 'B') hmBacon.write(in);
         else hmSlave.write(in);
     }
+}
+
+//Slave task: read data coming into the port OR connect to device
+int slvTask() {
+    //if not connected, connect
+    if(!BLEconnected) {
+        
+    }
+    else { //read all data from buffer
+        
+    }
+}
+
+#define BAC_MAC_LEN 13
+#define BAC_NAM_LEN 13
+#define BAC_NUM_DEV 20
+int bacNumID = 0;
+
+struct bacEntry {
+    char    mac [BAC_MAC_LEN]={'\0'};
+    int     rssi = 0;
+    int     id  = 0;
+    unsigned long t = 0;
+};
+
+bacEntry bacData[BAC_NUM_DEV];
+
+int bacStore(char *bacBuf, int len) {
+    //make sure some response was given
+    char *p = bacBuf;
+    
+    if(len<50) return 1;
+    //parse and store
+    //skip to +
+    parseDISI(p,len);
+}
+
+char buf0[9]={'\0'};
+char buf1[9]={'\0'};
+char buf2[9]={'\0'};
+char buf3[9]={'\0'};
+char buf4[13]={'\0'};
+char buf5[5]={'\0'};
+
+void parseDISI(char *p, int len) {
+    int i = 0;
+    int id = 0;
+
+    //skip OK+DISC:
+    while(i<len) {
+        //skip to start of useful data
+        while(p[i]!='+'&&i<len) {
+            i++;
+        }
+        i++;
+        while(p[i]!=':') {
+            i++;
+        }
+        i++;
+        memcpy(buf0,p+i,8);//get manufacturer id
+        Serial.println(buf0);
+        //Serial.println(BLE_RES_FILTER);
+        if(strcmp(buf0,BLE_RES_FILTER)) { //wrong id? skip
+            Serial.println(strcmp(buf0,BLE_RES_FILTER));
+            Serial.println("Skipped device");
+        }
+        else {
+            i+=8;
+            i++;//skip over :
+            memcpy(buf0,p+i,8);
+            i+=8;
+            memcpy(buf1,p+i,8);
+            i+=8;
+            memcpy(buf2,p+i,8);
+            i+=8;
+            memcpy(buf3,p+i,8);
+            i+=8;
+            i+=10; //skip major minor
+            i+=2;  //skip ::
+            
+            memcpy(buf4,p+i,12);//get mac
+            i+=12;
+            i++;//skip :
+            memcpy(buf5,p+i,4);//get rssi
+            i+=4;
+            
+            Serial.println(buf0);//id0
+            Serial.println(buf1);//id1
+            Serial.println(buf2);//id2
+            Serial.println(buf3);//id3
+            Serial.println(buf4);//mac
+            Serial.println(buf5);//rssi
+            if(strcmp(buf0,buf3)==0&&strcmp(buf1,buf2)==0) {
+                addEntry();
+            }
+        }
+    }
+}
+
+int addEntry() {
+    int id = atoi(buf1);
+    int i = 0;
+    while(bacData[i].id != id && i<bacNumID) {
+        i++;
+    }
+    if(i == BAC_NUM_DEV) {
+        Serial.println("No space for beacon data");
+        return 1;
+    }
+    if(i == bacNumID) bacNumID++;
+    if(strcmp(buf0,BEACON_ADV_UUID0)!=0) {
+        Serial.println("Slave / unknown device found. Not logging");
+        return -1;
+    }
+    memcpy(bacData[i].mac,buf4,12);
+    bacData[i].id=id;
+    bacData[i].rssi=atoi(buf5);
+    bacData[i].t=millis();
+    Serial.print("Logged at ");
+    Serial.print(i);
+    Serial.print(" : ");
+    Serial.print(bacData[i].id);
+    Serial.write(' ');
+    Serial.print(bacData[i].rssi);
+    Serial.write(' ');
+    Serial.println(bacData[i].t);
+
+}
+
+//Bacon task: read beacon information
+int bacTask() {
+    int ret = 0;
+#ifdef DEBUG_TASK
+    Serial.println("bacTask::");
+#endif
+    //Read previous scan results
+    ret = bacRead(bacBuf); 
+    
+    //Start a new scan
+    hmBacon.write("AT+DISI?");
+    Serial.println( "" );
+
+    //Update table
+    bacStore(bacBuf,ret);
+}
+
+//Wifi task: upload data to cloud
+int wifiTask() {
+    
+}
+
+void slvTaskChk() {
+    if(millis()>slvSchedT) {
+        slvSchedT=millis()+SLAVE_PERIOD;
+        slvTask();
+    }
+}
+
+void bacTaskChk() {
+#ifdef DEBUG_TASK
+    Serial.println("bacTaskChk::");
+#endif
+    if(millis()>bacSchedT) {
+        bacSchedT=millis()+BACON_PERIOD;
+        bacTask();
+    }
+}
+
+void wifiTaskChk() {
+    if(millis()>wifiSchedT) {
+        wifiSchedT=millis()+WIFI_PERIOD;
+        wifiTask();
+    }
+} 
+
+//read values and update table
+void bacReadTask() {
+    int ret;
+    //Read previous scan results
+    ret = bacRead(bacBuf); 
+
+    //Update table
+    bacStore(bacBuf,ret);
+}
+
+void bacReadChk() {
+    if(millis()>bacSchedR) {
+        bacSchedR=millis()+BACON_READ_PERIOD;
+        bacReadTask();
+    }
+} 
+
+void loop() {
+    //serialCmd();  
+    //slvTaskChk();
+    bacTaskChk();
+    bacReadChk();
+    //wifiTaskChk();
 }
