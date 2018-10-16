@@ -136,22 +136,6 @@ void setup() {
     Serial.println( "Finding bac Device MAC: " );
     bacCmd( "ADDR?", TOS_BAC, TOF_BAC );
     Serial.println( "" );
-/*while(1){
-    while (hmSlave.available() > 0) {
-        Serial.write(hmSlave.read());Serial.println(millis());        
-    }
-    while(hmBacon.available() > 0) {
-        Serial.write(hmBacon.read());Serial.println(millis());
-    }
-    while(Serial.available() > 0) {
-        char in = Serial.read();Serial.println(millis());
-        if(in == 'b') hmBacon.write(in);
-        else if(in == 'B') {bacCmd( "ADDR?", TOS_BAC, TOF_BAC );}
-        else if(in == 'c') {hmBacon.write('A');hmBacon.write('T');}
-        else if(in == 'C') {hmSlave.write('A');hmSlave.write('T');}
-        else hmSlave.write(in);
-    }
-}*/
 
     Serial.println( "Finding bac Device MAC: " );
     bacCmd( "ADDR?", TOS_BAC, TOF_BAC );
@@ -200,7 +184,45 @@ void setup() {
 unsigned long tl = 0;
 char usrBuf[50]={'\0'};
 
+bool BLEconnected = false;
+bool WIFIconnected = false;
+
 void loop() {
+//    serialCmd();
+    
+    
+}
+
+void slvRead() {
+    while (hmSlave.available() > 0) {
+        //Serial.write(hmSlave.read());//Serial.println(millis());
+        tl = millis();
+        int i=0;
+        while(millis()-tl<2 && hmSlave.available()>0) {
+            usrBuf[i]=hmSlave.read();
+            i++;
+        }
+        usrBuf[i]='\0';
+        Serial.println(usrBuf);
+    }
+}
+
+void bacRead() {
+    int i = 0;
+    while(hmBacon.available() > 0 && hmBacon.available()>0) {
+        //Serial.write(hmBacon.read());//Serial.println(millis());
+        tl = millis();
+        i=0;
+        while(millis()-tl<2) {
+            usrBuf[i]=hmBacon.read();
+            i++;
+        }
+        usrBuf[i]='\0';
+        Serial.println(usrBuf);
+    }
+}
+
+void serialCmd() {
     int i=0;
     while (hmSlave.available() > 0) {
         //Serial.write(hmSlave.read());//Serial.println(millis());
@@ -229,5 +251,4 @@ void loop() {
         if(in == 'b' || in == 'B') hmBacon.write(in);
         else hmSlave.write(in);
     }
-    
 }
