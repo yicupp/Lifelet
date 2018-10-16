@@ -5,7 +5,7 @@ SoftwareSerial hmSlave(4,5);        //Rx,Tx
 
 int LEDPIN = 13;
 
-#define SLAVE_NAME      "LIFELETS0001"
+#define SLAVE_NAME      "LLWearable01"
 #define BEACON_NAME     "LIFELETB0001"
 
 #define DEVICE_ID           1
@@ -19,6 +19,22 @@ int LEDPIN = 13;
 
 #define SLAVE_MEAS_POW      "0xC5"
 #define BEACON_MEAS_POW     "0xC5"
+
+#define SLAVE_ADV_UUID0     "69696969"
+#define SLAVE_ADV_UUID1     "01020304"
+#define SLAVE_ADV_UUID2     "40302010"
+#define SLAVE_ADV_UUID3     "69696969"
+
+#define SLAVE_ADV_MAJOR     "00000001"
+#define SLAVE_ADV_MINOR     "00000001"
+
+#define BEACON_ADV_UUID0    "AAAAAAAA"
+#define BEACON_ADV_UUID1    "0A0B0C0D"
+#define BEACON_ADV_UUID2    "D0C0B0A0"
+#define BEACON_ADV_UUID3    "AAAAAAAA"
+
+#define BEACON_ADV_MAJOR    "00000001"
+#define BEACON_ADV_MINOR    "00000001"
 
 #define RENEW           
 #define RENEW_DELAY     2000
@@ -181,10 +197,10 @@ void setup() {
 
     //initialise hmbeacon
     Serial.println("***********************************************\n");
-    Serial.println( "Initialising Beacon module" );
+    Serial.println( "Initialising  module" );
 
     hmBeacon.listen();
-    Serial.println( "Finding Device MAC: " );
+    Serial.println( "Finding Device MAC : " );
     beaCmd( "ADDR?", TOS, TOF );
     Serial.println( "" );
 
@@ -231,9 +247,7 @@ void setup() {
     beaCmd( cmdBuff, TOS, TOF );
     Serial.println("");
 
-    Serial.println("Restarting module");
-    beaCmd("RESET",TOS,TOF);
-    Serial.println("");
+    
 
     Serial.println( "**********************************************" );
     Serial.println( "BEACON INIT COMPLETE" );
@@ -250,13 +264,6 @@ void setup() {
     Serial.println( "Finding software version: " );
     slvCmd( "VERR?", TOS, TOF );
     Serial.println( "" );
-
-#ifdef RENEW
-    /*Serial.println("Restoring to default settings");
-    slvCmd( "RENEW", TOS, TOF );
-    Serial.println( "" );
-    delay(RENEW_DELAY);*/
-#endif
 
     Serial.println( "Setting power on mode" );
     slvCmd( "IMME1", TOS, TOF );
@@ -288,10 +295,58 @@ void setup() {
     slvCmd( cmdBuff, TOS, TOF );
     Serial.println("");
 
-    Serial.println("Restarting module");
-    slvCmd("RESET",TOS,TOF);
+    Serial.println("Setting advertisement id for beacon");
+    sprintf(cmdBuff, "IBE0%s", BEACON_ADV_UUID0);
+    beaCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "IBE1%s", BEACON_ADV_UUID1);
+    beaCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "IBE2%s", BEACON_ADV_UUID2);
+    beaCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "IBE3%s", BEACON_ADV_UUID3);
+    beaCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "MARJ%s", BEACON_ADV_MAJOR);
+    beaCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "MINO%s", BEACON_ADV_MINOR);
+    beaCmd(cmdBuff,TOS,TOF);
+    beaCmd("SHOW1",TOS,TOF);
+    beaCmd("IBEA1",TOS,TOF);
+    beaCmd("NOTI1",TOS,TOF);
+    Serial.println("");
+    
+    Serial.println("Restarting beacon module");
+    beaCmd("RESET",TOS,TOF);
+    Serial.println("");
+    
+    Serial.println("Seting ibeacon id for slave module");
+    sprintf(cmdBuff, "IBE0%s", SLAVE_ADV_UUID0);
+    slvCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "IBE1%s", SLAVE_ADV_UUID1);
+    slvCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "IBE2%s", SLAVE_ADV_UUID2);
+    slvCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "IBE3%s", SLAVE_ADV_UUID3);
+    slvCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "MARJ%s", SLAVE_ADV_MAJOR);
+    slvCmd(cmdBuff,TOS,TOF);
+    sprintf(cmdBuff, "MINO%s", SLAVE_ADV_MINOR);
+    slvCmd(cmdBuff,TOS,TOF);
+    slvCmd("SHOW1",TOS,TOF);
+    slvCmd("IBEA1",TOS,TOF);
+    slvCmd("NOTI1",TOS,TOF);
     Serial.println("");
 
+    Serial.println("Restarting slave");
+    slvCmd("RESET",TOS,TOF);
+    Serial.println("");
+/*
+    Serial.println("Restarting beacon module");
+    beaCmd("RESET",TOS,TOF);
+    Serial.println("");
+    
+    Serial.println("Restarting slave module");
+    slvCmd("RESET",TOS,TOF);
+    Serial.println("");*/
+    
     Serial.println( "**********************************************" );
     Serial.println( "PERIPH INIT COMPLETE" );
     Serial.println( "**********************************************" );
@@ -343,7 +398,7 @@ int beaGet( int to_start, int to_finish, char *buff, int buff_size ) {
     int count = 0;
     int charc = 0;
 
-    while( count < to_start && hmSlave.available() == 0) {
+    while( count < to_start && hmBeacon.available() == 0) {
         count++;
     }
     if(count == to_start) {
