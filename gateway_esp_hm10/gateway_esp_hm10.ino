@@ -30,6 +30,8 @@
 #define RENEW_DELAY     2000
 #define DEBUG
 
+#define WEARABLE_BASE_NAME "LLWEARABLE"
+
 //#define DEBUG_TASK
 
 HardwareSerial hmSlave(1);
@@ -39,6 +41,17 @@ HardwareSerial hmBacon(2);
 static char cmdBuf[CMD_BUF_LEN] = {'\0'};
 
 #define BLE_RES_FILTER "4C000215" //manufacturer id
+
+//wifi
+#include <WiFi.h>
+
+const char* ssid     = "Terrortown";
+const char* password = "aaaaaaaa";
+
+const char* host = "47.91.46.124";
+
+char *http_buff[500] = {'\0'};
+// \wifi
 
 void bacCmd(char * cmd, unsigned long tos, unsigned long tof) {
     int i = 0;
@@ -429,9 +442,48 @@ int bacTask() {
     bacStore(bacBuf,ret);
 }
 
+int wifiPrevState = WL_DISCONNECTED;
+
 //Wifi task: upload data to cloud
 int wifiTask() {
+    int wifiState = WiFi.status();
+    if(wifiState == WL_IDLE_STATUS) {
+        Serial.print("Still attempting to connect to");
+        Serial.println(ssid);
+        wifiPrevState = wifiState;
+        return -1;
+    }
+    if(wifiState == WL_CONNECT_FAILED) {
+        Serial.println("Connection failed");
+        wifiPrevState = wifiState;
+        return 1;
+    }
+    if(wifiState != WL_CONNECTED) {
+        if(wifiPrevState == WL_CONNECTED) {
+            Serial.println("Wifi no connection. Reconnecting...");
+        }
+        wifiPrevState = WL_DISCONNECTED;
+        wifiConnect();
+        return 1;
+    }
+    if(wifiPrevState != WL_CONNECTED && wifiState == WL_CONNECTED) {
+        Serial.println("");
+        Serial.println("WiFi connection established");
+        Serial.println("IP address: ");
+        Serial.println(WiFi.localIP());
+        wifiPrevState = WL_CONNECTED;
+    }
+    else if(wifiState == WL_CONNECTED && wifiPrevState == WL_CONNECTED) {
+        Serial.println("Maintained Wifi connection");
+    }
     
+}
+
+int wifiConnect() {
+    Serial.print("Connecting to ");
+    Serial.println(ssid);
+
+    WiFi.begin(ssid, password);
 }
 
 void slvTaskChk() {
@@ -480,5 +532,5 @@ void loop() {
     //slvTaskChk();
     bacTaskChk();
     bacReadChk();
-    //wifiTaskChk();
+    wifiTaskChk();
 }
