@@ -44,6 +44,7 @@ static char cmdBuf[CMD_BUF_LEN] = {'\0'};
 
 //wifi
 #include <WiFi.h>
+WiFiClient client;
 
 const char* ssid     = "Terrortown";
 const char* password = "aaaaaaaa";
@@ -398,7 +399,7 @@ void parseDISI(char *p, int len) {
 int addEntry() {
     int id = atoi(buf1);
     int i = 0;
-    while(bacData[i].id != id && i<bacNumID) {
+    while(bacData[i].id != id && i<=bacNumID-1) {
         i++;
     }
     if(i == BAC_NUM_DEV) {
@@ -416,6 +417,8 @@ int addEntry() {
     bacData[i].t=millis();
     Serial.print("Logged at ");
     Serial.print(i);
+    Serial.print('/');
+    Serial.print(bacNumID);
     Serial.print(" : ");
     Serial.print(bacData[i].id);
     Serial.write(' ');
@@ -443,6 +446,7 @@ int bacTask() {
 }
 
 int wifiPrevState = WL_DISCONNECTED;
+bool hostPrevConnected = false;
 
 //Wifi task: upload data to cloud
 int wifiTask() {
@@ -474,9 +478,34 @@ int wifiTask() {
         wifiPrevState = WL_CONNECTED;
     }
     else if(wifiState == WL_CONNECTED && wifiPrevState == WL_CONNECTED) {
-        Serial.println("Maintained Wifi connection");
+        Serial.println("Wifi connection maintained");
+    }
+
+    bool hostConnected = client.connected();
+    if(hostConnected == false) {
+        if(hostPrevConnected == false) {
+            Serial.println("Starting new connection to server");
+        }
+        else {
+            Serial.println("Lost connection. Reconnecting to server");
+        }
+        const int httpPort = 80;
+        if (!client.connect(host, httpPort)) {
+            Serial.println("connection failed");
+            hostPrevConnected = false;
+            return 2;
+        }
+        Serial.print("Successfully connected to ");
+        Serial.println(host);
+    }
+    else {
+        Serial.println("Host connection maintained");
     }
     
+    //send advertisement packets if any 
+    
+
+    return 0;
 }
 
 int wifiConnect() {
