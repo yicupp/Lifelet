@@ -530,7 +530,7 @@ int wifiTask() {
 char contLenStr[11] = {'\0'};
 
 int wifiSendBacPac(int i) {
-    int contLen = 15+BAC_CONST_SIZE+50+15;
+    int contLen = 15+BAC_CONST_SIZE+50+19;
     sprintf(contLenStr,"%d",contLen); 
        
     client.print( String(
@@ -541,24 +541,10 @@ int wifiSendBacPac(int i) {
 "Content-Length: "+contLenStr+"\r\n"+
 "\r\n"+
 "{"+"\r\n"+
-"\""+KEY_GATEWAY_NAME+"\" : \""+GATEWAY_BASE_NAME+"\"\r\n"+
-"\""+KEY_DEV_NAME+"\" : \""+String(bacData[i].mac)+WEARABLE_BASE_NAME+String(bacData[i].idStr)+",\"\r\n"+
-"\"data_type\" : \"rssi\"\r\n"+
-"\""+KEY_RSSI+"\" : \""+String(bacData[i].rssiStr)+"\",\r\n"+
-"}\r\n\r\n");
-
-Serial.println( String(
-"PUT /tablestore1 HTTP/1.1")+"\r\n"+
-"Host: "+host+":80\r\n"+
-"Content-Type: application/json"+"\r\n"+
-"Connection: close"+"\r\n"+
-"Content-Length: "+contLenStr+"\r\n"+
-"\r\n"+
-"{"+"\r\n"+
-"\""+KEY_GATEWAY_NAME+"\" : \""+GATEWAY_BASE_NAME+"\"\r\n"+
-"\""+KEY_DEV_NAME+"\" : \""+String(bacData[i].mac)+WEARABLE_BASE_NAME+String(bacData[i].idStr)+",\"\r\n"+
-"\"data_type\" : \"rssi\"\r\n"+
-"\""+KEY_RSSI+"\" : \""+String(bacData[i].rssiStr)+"\",\r\n"+
+"\""+KEY_GATEWAY_NAME+"\" : \""+GATEWAY_BASE_NAME+"\",\r\n"+
+"\""+KEY_DEV_NAME+"\" : \""+String(bacData[i].mac)+WEARABLE_BASE_NAME+String(bacData[i].idStr)+"\",\r\n"+
+"\"data_type\" : \"rssi\",\r\n"+
+"\""+KEY_RSSI+"\" : \""+String(bacData[i].rssiStr)+"\"\r\n"+
 "}\r\n\r\n");
 
 while (client.available() == 0) {}
@@ -621,7 +607,7 @@ void bacReadChk() {
 
 void loop() {
     //serialCmd();  
-    //slvTaskChk();
+    slvTaskChk();
     bacTaskChk();
     bacReadChk();
     wifiTaskChk();
