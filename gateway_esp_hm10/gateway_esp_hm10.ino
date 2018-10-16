@@ -31,6 +31,9 @@
 #define DEBUG
 
 #define WEARABLE_BASE_NAME "LLWEARABLE"
+#define GATEWAY_BASE_NAME  "LLGATE01"
+const int BAC_CONST_SIZE = sizeof(KEY_DEV_NAME)+sizeof(WEARABLE_BASE_NAME)+
+sizeof(KEY_RSSI)+sizeof(KEY_GATEWAY_NAME)+sizeof(GATEWAY_BASE_NAME)-5;
 
 //#define DEBUG_TASK
 
@@ -221,7 +224,7 @@ bool WIFIconnected = false;
 
 
 #define SLAVE_PERIOD    70
-#define WIFI_PERIOD     200
+#define WIFI_PERIOD     333
 #define BACON_PERIOD    1200
 #define BACON_READ_PERIOD 200
 
@@ -313,6 +316,7 @@ int slvTask() {
 #define BAC_MAC_LEN 13
 #define BAC_NAM_LEN 13
 #define BAC_NUM_DEV 20
+#define BAC_ID_LEN 9
 int bacNumID = 0;
 
 struct bacEntry {
@@ -320,6 +324,8 @@ struct bacEntry {
     int     rssi = 0;
     int     id  = 0;
     unsigned long t = 0;
+    char    idStr[BAC_ID_LEN]={'\0'};
+    char    rssiStr[4]={'\0'};
 };
 
 bacEntry bacData[BAC_NUM_DEV];
@@ -415,10 +421,13 @@ int addEntry() {
     bacData[i].id=id;
     bacData[i].rssi=atoi(buf5);
     bacData[i].t=millis();
-    Serial.print("Logged at ");
+    memcpy(bacData[i].rssiStr,buf5,3);
+    memcpy(bacData[i].idStr,buf1,8);
+    Serial.print("Logged at index");
     Serial.print(i);
     Serial.print('/');
     Serial.print(bacNumID);
+    Serial.print("devs. ");
     Serial.print(" : ");
     Serial.print(bacData[i].id);
     Serial.write(' ');
@@ -497,17 +506,48 @@ int wifiTask() {
         }
         Serial.print("Successfully connected to ");
         Serial.println(host);
+        hostPrevConnected = true;
     }
     else {
         Serial.println("Host connection maintained");
     }
     
     //send advertisement packets if any 
-    
+    if(bacNumID>0) {
+        Serial.println("Uploading beacon logs");
+        for(int i=0;i<bacNumID;i++) {
+            wifiSendBacPac(i);
+        }
+        bacNumID=0;
+    }
+    else {
+        Serial.println("No beacon logs to upload");
+    }
 
     return 0;
 }
 
+char contLenStr[11] = {'\0'};
+
+int wifiSendBacPac(int i) {
+    int contLen = 15+BAC_CONST_SIZE+40;
+    sprintf(contLenStr,"%d",contLen); 
+       
+    client.print( String(
+"PUT /tablestore HTTP/1.1")+"\r\n"+
+"Host: "+host+":80\r\n"+
+"Content-Type: application/json"+"\r\n"+
+"Connection: keep-alive"+"\r\n"+
+"Content-Length: "+contLenStr+"\r\n"+
+"\r\n"+
+"{"+"\r\n"+
+"\""+KEY_DEV_NAME+"\": \""+String(bacData[i].mac)+WEARABLE_BASE_NAME+String(bacData[i].idStr)+"\"\r\n"+
+"\""+KEY_RSSI+"\": \""+String(bacData[i].rssiStr)+"\"\r\n"+
+"\""+KEY_GATEWAY_NAME+"\": \""+GATEWAY_BASE_NAME+"\"\r\n"+
+"}\r\n\r\n");
+
+    return 0;
+}
 int wifiConnect() {
     Serial.print("Connecting to ");
     Serial.println(ssid);
