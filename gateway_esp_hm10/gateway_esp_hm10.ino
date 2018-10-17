@@ -379,13 +379,26 @@ int slvTask() {
 
             BLEstate = READY;
             BLEslaveDisc=false;
+            BLEconnectTimer = millis();
         }
     }
     else if(BLEstate == CONNECTED) {
         slvRead(slvBuf);
     }
     else if(BLEstate == READY) {
-        
+        slvRead(slvBuf);
+        if(strstr(slvBuf,"AT+CONN")!=NULL || strstr(slvBuf,"AT+CO0")!=NULL) {
+            Serial.println("Device connected!");
+            BLEstate = CONNECTED;
+        }
+        else if(millis()-BLEconnectTimer >=BLE_CONN_TIMEOUT) {
+            Serial.println("Device connection timed out");
+            BLEstate = DISCONNECTED;
+        }
+    }
+    else {
+        Serial.println("BLE in unknown state. Resetting state");
+        BLEstate = DISCONNECTED;
     }
 }
 
