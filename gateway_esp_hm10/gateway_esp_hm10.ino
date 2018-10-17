@@ -331,6 +331,7 @@ struct BLEslaveData {
     char temp[4]={'\0'};
     char fall_detected[2]={'\0'};
     char humidity[4]={'\0'};
+    char rssi[5] = {'\0'};
 };
 
 BLEslaveData slvDat;
@@ -387,7 +388,7 @@ int slvTask() {
     }
     else if(BLEstate == READY) {
         slvRead(slvBuf);
-        if(strstr(slvBuf,"AT+CONN")!=NULL || strstr(slvBuf,"AT+CO0")!=NULL) {
+        if(strstr(slvBuf,"OK+CONN")!=NULL || strstr(slvBuf,"OK+CO0")!=NULL) {
             Serial.println("Device connected!");
             BLEstate = CONNECTED;
         }
