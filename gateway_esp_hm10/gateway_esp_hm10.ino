@@ -81,7 +81,8 @@ static char cmdBuf[CMD_BUF_LEN] = {'\0'};
 #include <WiFi.h>
 WiFiClient client;
 
-const char* ssid     = "Terrortown";
+//const char* ssid     = "Terrortown";
+const char* ssid = "yicup";
 const char* password = "aaaaaaaa";
 
 const char* host = "47.91.46.124";
