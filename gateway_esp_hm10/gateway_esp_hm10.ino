@@ -61,8 +61,9 @@
 #define RENEW           
 #define RENEW_DELAY     2000
 #define DEBUG
-#define NOPRINT0
-
+#define NOPRINT0 //don't print buffer reads
+#define NOPRINT1 //don't print sent packet contents
+#define NOPRINT2 //don't print received packet contents
 
 #define SLAVE_ADV_UUID0     "AAAAAAAA" //Type is slave
 //#define SLAVE_ADV_UUID1     "00000001" //id is 1
@@ -279,7 +280,8 @@ void setup() {
 
     wifiBacTime=millis();
     wifiSlvTime=millis();
-    Serial.setTimeout(25);
+    Serial.setTimeout(2);
+    //Serial.setTimeout(25);
     sysClk=millis();
     slvSchedT=millis()+slvSchedT;
     wifiSchedT=millis()+wifiSchedT;
@@ -830,9 +832,11 @@ int wifiSendBacPac(int i) {
 
     while(client.available()) {
         String line = client.readStringUntil('\r');
+        #ifndef NOPRINT2
         Serial.print(line);
+        #endif
     }
-      
+
     Serial.println("\n\n~~~Bacon packet~~~\n");
     Serial.print("Time since last bacon packet: ");
     Serial.println(millis()-wifiBacTime);
@@ -864,7 +868,9 @@ int bodLen=strlen(wifiBacBuf);
 "%s",
 host,bodLen,wifiBacBuf);
 
+#ifndef NOPRINT1
     Serial.println(wifiBuf);
+#endif
     client.print(wifiBuf);
 
 /*
@@ -885,7 +891,9 @@ char wifiContBuf[WIFI_SLV_BUF_SIZE] = {'\0'};
 int wifiSendSlvPac() {
     while(client.available()) {
         String line = client.readStringUntil('\r');
+        #ifndef NOPRINT2
         Serial.print(line);
+        #endif
     }
 
     Serial.println("\n\n~~~Sensor packet~~~\n");
@@ -927,7 +935,9 @@ KEY_FALL_DETECTED,slvDat.fall_detected[0]
 "%s",
 host,bodLen,wifiContBuf);
 
+#ifndef NOPRINT1
     Serial.println(wifiBuf);
+#endif
     client.print(wifiBuf);
 /*
     while (client.available() == 0) {}
