@@ -116,7 +116,7 @@ char *http_buff[500] = {'\0'};
 // \wifi
 
 unsigned long wifiSlvTime = 0;
-unsigned long wifiBactime = 0;
+unsigned long wifiBacTime = 0;
 
 void bacCmd(char * cmd, unsigned long tos, unsigned long tof) {
     int i = 0;
