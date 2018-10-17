@@ -443,9 +443,7 @@ void setup() {
 
 void loop() {
   get_mpudata();
-  //AM_LT();
-  AM_UT();
-  trigger1=1;
+  AM_LT();
 }
 
 void dht11(){
