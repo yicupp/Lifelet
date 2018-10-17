@@ -38,7 +38,7 @@
 
 #define CODE_SVM            3
 #define CHAR_SVM            's'
-#define  KEY_SVM            "svm"
+#define  KEY_SVM            "SVM"
 
 #define CODE_VEL_MAG        4
 #define  KEY_VEL_MAG        "vel_mag"
@@ -49,12 +49,12 @@
 
 #define CODE_FALL_DETECTED  6
 #define CHAR_FALL_DETECTED  'f'
-#define  KEY_FALL_DETECTED  "fall_detected"
+#define  KEY_FALL_DETECTED  "fall"
 
 #define CODE_GATEWAY_NAME   7
 #define  KEY_GATEWAY_NAME   "gateway_name"
 #define CODE_DEV_NAME       8
-#define  KEY_DEV_NAME       "dev_name"
+#define  KEY_DEV_NAME       "device_name"
 #define CODE_RSSI           9
 #define  KEY_RSSI           "RSSI"
 
@@ -63,7 +63,9 @@
 #define DEBUG
 
 #define WEARABLE_BASE_NAME "LLWearable"
-#define GATEWAY_BASE_NAME  "LLGATE01"
+#define GATEWAY_BASE_NAME  "LLGate1"
+//#define WEARABLE_BASE_NAME "device"
+//#define GATEWAY_BASE_NAME  "gateway1"
 const int BAC_CONST_SIZE = sizeof(KEY_DEV_NAME)+sizeof(WEARABLE_BASE_NAME)+
 sizeof(KEY_RSSI)+sizeof(KEY_GATEWAY_NAME)+sizeof(GATEWAY_BASE_NAME)-5;
 
@@ -81,10 +83,17 @@ static char cmdBuf[CMD_BUF_LEN] = {'\0'};
 #include <WiFi.h>
 WiFiClient client;
 
-const char* ssid     = "Terrortown";
-const char* password = "aaaaaaaa";
+//const char* ssid     = "Terrortown";
+//const char* ssid     = "yicup";
+//const char* password = "aaaaaaaa";
 
-const char* host = "47.91.46.124";
+const char* ssid     = "SDN_1";
+const char* password = "openflow";
+
+//const char* host = "47.91.46.124";
+const char* host = "47.91.42.94 ";
+//const char* host = "192.168.10.22"; 
+//const char* host = "www.google.com.au"; 
 
 char *http_buff[500] = {'\0'};
 // \wifi
@@ -744,7 +753,7 @@ int wifiTask() {
         else {
             Serial.println("Lost connection. Reconnecting to server");
         }
-        const int httpPort = 80;
+        const int httpPort = 8000;
         if (!client.connect(host, httpPort)) {
             Serial.println("connection failed");
             hostPrevConnected = false;
@@ -788,6 +797,7 @@ int wifiTask() {
 char contLenStr[11] = {'\0'};
 
 int wifiSendBacPac(int i) {
+    return 5;
     int contLen = 15+BAC_CONST_SIZE+50+19;
     sprintf(contLenStr,"%d",contLen); 
 
@@ -798,7 +808,7 @@ int wifiSendBacPac(int i) {
       
     client.print( String(
 "PUT /tablestore1 HTTP/1.1")+"\r\n"+
-"Host: "+host+":80\r\n"+
+"Host: "+host+":8000\r\n"+
 "Content-Type: application/json"+"\r\n"+
 "Connection: keep-alive"+"\r\n"+
 "Content-Length: "+contLenStr+"\r\n"+
@@ -825,7 +835,6 @@ int wifiSendBacPac(int i) {
 char wifiContBuf[WIFI_SLV_BUF_SIZE] = {'\0'};
 
 int wifiSendSlvPac() {
-    return 5;
     while(client.available()) {
         String line = client.readStringUntil('\r');
         Serial.print(line);
@@ -838,7 +847,8 @@ int wifiSendSlvPac() {
 "\n"
 "{\n"
 "\"%s\" : \"%s\",\n"
-"\"%s\" : \"%s%s%s\",\n"
+"\"%s\" : \"%s%d\",\n"
+//"\"%s\" : \"%s%s%s\",\n"
 "\"data_type\" : \"sensor\",\n"
 "\"%s\" : \"%s\",\n"
 "\"%s\" : \"%s\",\n"
@@ -847,7 +857,8 @@ int wifiSendSlvPac() {
 "\"%s\" : \"%c\"\n"
 "}\n",
 KEY_GATEWAY_NAME,GATEWAY_BASE_NAME,
-KEY_DEV_NAME,slvDat.mac,WEARABLE_BASE_NAME,slvDat.idStr,
+//KEY_DEV_NAME,slvDat.mac,WEARABLE_BASE_NAME,slvDat.idStr,
+KEY_DEV_NAME,WEARABLE_BASE_NAME,slvDat.id,
 KEY_TEMP,slvDat.temp,
 KEY_HUMIDITY,slvDat.humidity,
 KEY_SVM,slvDat.svm,
@@ -857,7 +868,7 @@ KEY_FALL_DETECTED,slvDat.fall_detected[0]
     int bodLen=strlen(wifiContBuf);
     sprintf(wifiBuf,
 "PUT /tablestore1 HTTP/1.1\r\n"
-"Host: %s:80\r\n"
+"Host: %s:8000\r\n"
 "Content-Type: application/json\r\n"
 "Connection: keep-alive\r\n"
 "Content-Length: %d\r\n"
@@ -867,6 +878,15 @@ host,bodLen,wifiContBuf);
 
     Serial.println(wifiBuf);
     client.print(wifiBuf);
+/*
+    while (client.available() == 0) {}
+
+    // Read all the lines of the reply from server and print them to Serial
+    while(client.available()) {
+        String line = client.readStringUntil('\r');
+        Serial.print(line);
+    }
+*/
     
     return 0;
 }
