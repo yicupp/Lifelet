@@ -102,17 +102,28 @@ int LEDPIN = 13;
 
 //HTTP keys
 #define CODE_HUMIDITY       1
+#define CHAR_HUMIDITY       'h'
 #define  KEY_HUMIDITY       "humidity"
+
 #define CODE_TEMP           2
+#define CHAR_TEMP           't'
 #define  KEY_TEMP           "temp"
+
 #define CODE_SVM            3
+#define CHAR_SVM            's'
 #define  KEY_SVM            "svm"
+
 #define CODE_VEL_MAG        4
 #define  KEY_VEL_MAG        "vel_mag"
+
 #define CODE_STEP_COUNT     5
+#define CHAR_STEP_COUNT     'c'
 #define  KEY_STEP_COUNT     "step_count"
+
 #define CODE_FALL_DETECTED  6
+#define CHAR_FALL_DETECTED  'f'
 #define  KEY_FALL_DETECTED  "fall_detected"
+
 #define CODE_GATEWAY_NAME   7
 #define  KEY_GATEWAY_NAME   "gateway_name"
 #define CODE_DEV_NAME       8
@@ -576,7 +587,14 @@ void send_data() {
         Serial.println(millis()-t);
         Serial.println("Sending packet");
         t=millis();
-        
+
+        dtostrf(AM,6,2,strAm);
+        step_count = 0;
+        sprintf(usrBuff,"%c%d%c%d%c%s%c%d%c%d",CHAR_HUMIDITY,int(humid),CHAR_TEMP,int(temp)
+        ,CHAR_SVM,strAm,CHAR_STEP_COUNT,step_count,CHAR_FALL_DETECTED,fall);
+        hmSlave.write(usrBuff);
+        Serial.println(usrBuff);
+/*      
         //temp
         sprintf(usrBuff,"temp: %d\r\n",int(temp));
         hmSlave.write(usrBuff);
@@ -626,13 +644,15 @@ Serial.println(millis()-t);
         sprintf(usrBuff,"fall_detection: %d\r\n",fall);
         hmSlave.write(usrBuff);
         pack_time = millis();
-
+*/
 #ifdef TIME_DEBUG 
 Serial.println(millis()-t); 
 #endif
 
         Serial.println("Packet sending delay");
         Serial.println(millis()-t);
+        
+        
     }
 }
 

@@ -5,7 +5,7 @@
 #define TOF_BAC     50
 #define TOS_SLV     100
 #define TOF_SLV     50
-
+/*
 //HTTP keys
 #define CODE_HUMIDITY       1
 #define  KEY_HUMIDITY       "humidity"
@@ -25,6 +25,38 @@
 #define  KEY_DEV_NAME       "device_name"
 #define CODE_RSSI           9
 #define  KEY_RSSI           "rssi_value"
+*/
+
+//HTTP keys
+#define CODE_HUMIDITY       1
+#define CHAR_HUMIDITY       'h'
+#define  KEY_HUMIDITY       "humidity"
+
+#define CODE_TEMP           2
+#define CHAR_TEMP           't'
+#define  KEY_TEMP           "temp"
+
+#define CODE_SVM            3
+#define CHAR_SVM            's'
+#define  KEY_SVM            "svm"
+
+#define CODE_VEL_MAG        4
+#define  KEY_VEL_MAG        "vel_mag"
+
+#define CODE_STEP_COUNT     5
+#define CHAR_STEP_COUNT     'c'
+#define  KEY_STEP_COUNT     "step_count"
+
+#define CODE_FALL_DETECTED  6
+#define CHAR_FALL_DETECTED  'f'
+#define  KEY_FALL_DETECTED  "fall_detected"
+
+#define CODE_GATEWAY_NAME   7
+#define  KEY_GATEWAY_NAME   "gateway_name"
+#define CODE_DEV_NAME       8
+#define  KEY_DEV_NAME       "dev_name"
+#define CODE_RSSI           9
+#define  KEY_RSSI           "RSSI"
 
 #define RENEW           
 #define RENEW_DELAY     2000
@@ -208,6 +240,13 @@ void setup() {
     Serial.println( "" );
     slvCmd("SCAN1", TOS_SLV, TOF_SLV);
     Serial.println( "" );
+
+    Serial.println( "Do not save address" );
+    bacCmd("SAVE1", TOS_BAC, TOF_BAC);
+    Serial.println( "" );
+    slvCmd("SAVE1", TOS_SLV, TOF_SLV);
+    Serial.println( "" );
+    
     Serial.setTimeout(25);
     sysClk=millis();
     slvSchedT=millis()+slvSchedT;
@@ -312,6 +351,7 @@ void serialCmd() {
 unsigned long BLEconnectTimer = 0;
 #define BLE_SCAN_TIMEOUT    2000
 #define BLE_CONN_TIMEOUT    200
+#define BLE_SLAVE_TIMEOUT   1000
 int BLEstate = DISCONNECTED;
 bool BLEslaveDisc = false;
 
@@ -335,6 +375,7 @@ struct BLEslaveData {
 };
 
 BLEslaveData slvDat;
+bool slvDatPush = false;
 
 //Slave task: read data coming into the port OR connect to device
 int slvTask() {
@@ -385,6 +426,23 @@ int slvTask() {
     }
     else if(BLEstate == CONNECTED) {
         slvRead(slvBuf);
+        int slvBufLen=strlen(slvBuf);
+        if(strstr(slvBuf,"OK+LOST")!=NULL) {
+            Serial.println("Device disconnected");
+            BLEstate = DISCONNECTED;
+        }
+        //timeout
+        else if(millis()-BLEconnectTimer>BLE_SLAVE_TIMEOUT && slvBufLen<5){
+            slvOK();
+            slvOK();
+            slvOK();
+            BLEstate = DISCONNECTED;
+            slvCmd("",TOS_SLV,TOF_SLV);
+        }
+        else {
+            BLEconnectTimer = millis();
+        }
+        slvStoreData(slvBuf,slvBufLen);
     }
     else if(BLEstate == READY) {
         slvRead(slvBuf);
@@ -401,6 +459,54 @@ int slvTask() {
         Serial.println("BLE in unknown state. Resetting state");
         BLEstate = DISCONNECTED;
     }
+}
+
+/*struct BLEslaveData {
+    char mac[13]={'\0'};
+    int  id = 0;
+    char idStr[9]={'\0'};
+    char step_count[1]={'\0'};
+    char svm[5]={'\0'};
+    char temp[4]={'\0'};
+    char fall_detected[2]={'\0'};
+    char humidity[4]={'\0'};
+    char rssi[5] = {'\0'};
+};*/
+
+//store slave data
+void slvStoreData(char *buf,int len) {
+    char *p = buf;
+    int i = 0;
+    while(i<len) {
+        while(p[i]>'z'||p[i]<'a') i++;
+        i++;
+        switch(p[i]) {
+            case CHAR_TEMP:
+                memcpy(slvDat.temp,p+i,3);
+                if(slvDat.temp[2]>'9'||slvDat.temp[2]<'0') {
+                    slvDat.temp[2]='\0';
+                }
+            break;
+            case CHAR_HUMIDITY:
+                memcpy(slvDat.humidity,p+i,3);
+                if(slvDat.humidity[2]>'9'||slvDat.humidity[2]<'0') {
+                    slvDat.humidity[2]='\0';
+                }
+            break;
+            case CHAR_STEP_COUNT:
+                strcpy(slvDat.step_count,"123");
+            break;
+            case CHAR_SVM:
+                memcpy(slvDat.svm,p+i,6);
+                i+=4;
+            break;
+            case CHAR_FALL_DETECTED:
+                slvDat.fall_detected[0]=p[i];
+            break;
+        }
+        i++;
+    }
+    
 }
 
 //look for slaves
