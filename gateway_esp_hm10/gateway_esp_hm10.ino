@@ -61,6 +61,7 @@
 #define RENEW           
 #define RENEW_DELAY     2000
 #define DEBUG
+#define NOPRINT0
 
 
 #define SLAVE_ADV_UUID0     "AAAAAAAA" //Type is slave
@@ -318,10 +319,12 @@ int slvRead(char *buf) {
         i++;  
     }
     buf[i]='\0';
+    #ifndef NOPRINT0
     Serial.println("--Slave read buffer--");
     Serial.println(buf);
     Serial.println("---------End---------");
     return i;
+    #endif
 }
 
 int bacRead(char *buf) {
@@ -334,13 +337,16 @@ int bacRead(char *buf) {
         i++;
     }
     buf[i]='\0';
+    Serial.println("Bacon read");
     if(strstr(buf,"OK+DISCE")) {
         Serial.println("Bacon scan complete");
     }
+    #ifndef NOPRINT0
     Serial.println("--Bacon read buffer--");
     Serial.println(buf);
     Serial.println(i);
     Serial.println("---------End---------");
+    #endif
     return i;
 }
 
@@ -828,8 +834,9 @@ int wifiSendBacPac(int i) {
     }
       
     Serial.println("\n\n~~~Bacon packet~~~\n");
-    Serial.print("time since last bacon packet: ");
+    Serial.print("Time since last bacon packet: ");
     Serial.println(millis()-wifiBacTime);
+    Serial.println();
     wifiBacTime = millis(); 
     
     sprintf(wifiBacBuf, 
@@ -882,8 +889,9 @@ int wifiSendSlvPac() {
     }
 
     Serial.println("\n\n~~~Sensor packet~~~\n");
-    Serial.print("time since last slave packet: ");
+    Serial.print("Time since last slave packet: ");
     Serial.println(millis()-wifiSlvTime);
+    Serial.println();
     wifiSlvTime = millis(); 
     
     sprintf(wifiContBuf,
