@@ -30,7 +30,7 @@
 #define RENEW_DELAY     2000
 #define DEBUG
 
-#define WEARABLE_BASE_NAME "LLWEARABLE"
+#define WEARABLE_BASE_NAME "LLWearable"
 #define GATEWAY_BASE_NAME  "LLGATE01"
 const int BAC_CONST_SIZE = sizeof(KEY_DEV_NAME)+sizeof(WEARABLE_BASE_NAME)+
 sizeof(KEY_RSSI)+sizeof(KEY_GATEWAY_NAME)+sizeof(GATEWAY_BASE_NAME)-5;
@@ -248,7 +248,7 @@ int slvRead(char *buf) {
         i++;  
     }
     buf[i]='\0';
-    Serial.println("--Bacon read buffer--");
+    Serial.println("--Slave read buffer--");
     Serial.println(buf);
     Serial.println("---------End---------");
     return i;
@@ -264,6 +264,9 @@ int bacRead(char *buf) {
         i++;
     }
     buf[i]='\0';
+    if(strstr(buf,"OK+DISCE")) {
+        Serial.println("Bacon scan complete");
+    }
     Serial.println("--Bacon read buffer--");
     Serial.println(buf);
     Serial.println(i);
@@ -305,27 +308,127 @@ void serialCmd() {
 #define DISCONNECTED    2
 #define SCANNING        0
 #define CONNECTED       1
+#define READY           3 //connecting
 unsigned long BLEconnectTimer = 0;
-#define BLE_SCAN_TIMEOUT    500
-#define BLE_CONN_TIMEOUT    500
+#define BLE_SCAN_TIMEOUT    2000
+#define BLE_CONN_TIMEOUT    200
 int BLEstate = DISCONNECTED;
+bool BLEslaveDisc = false;
+
+char slvBuf1[13]={'\0'};
+const int wearable_base_name_len = strlen(WEARABLE_BASE_NAME);
+const int wearable_id_len = 12-wearable_base_name_len;
+const int wearable_id_offset = 8-wearable_id_len;
+char slvBuf2[13]={'\0'};
+char slvBuf3[50]={'\0'};
+
+struct BLEslaveData {
+    char mac[13]={'\0'};
+    int  id = 0;
+    char idStr[9]={'\0'};
+    char step_count[1]={'\0'};
+    char svm[5]={'\0'};
+    char temp[4]={'\0'};
+    char fall_detected[2]={'\0'};
+    char humidity[4]={'\0'};
+};
+
+BLEslaveData slvDat;
 
 //Slave task: read data coming into the port OR connect to device
 int slvTask() {
-    return 0;
     //if not connected, start scan
     if(BLEstate==DISCONNECTED) {
+        Serial.println("BLE starting discovery");
+        //slvCmd("DISC?",TOS_SLV,TOF_SLV);
         hmSlave.write("AT+DISC?");
         BLEconnectTimer = millis();
+        BLEstate = SCANNING;
+        BLEslaveDisc = false;
     }
     else if(BLEstate == SCANNING){ //if we're currently scanning
-        //scan timed out
+        //read scan data
+        slvRead(slvBuf);
+        int slvBufLen=strlen(slvBuf);
+
+        //parse slave data
+        if(slvBufLen>15) { //discard useless data
+            parseSlave(slvBuf,slvBufLen);
+        }
+
+        //if scan end signalled 
+        if(strstr(slvBuf,"OK+DISCE")!=NULL) {
+            Serial.println("Scan ended");
+            BLEstate = DISCONNECTED;
+        }
+        //if scan times out
         if(millis()-BLEconnectTimer>BLE_SCAN_TIMEOUT) {
-            
+            Serial.println("Scan timeout");
+            BLEstate = DISCONNECTED;
+        } 
+
+        if(BLEstate == DISCONNECTED && BLEslaveDisc==true) {
+            Serial.print("Attempting connection to ");
+            Serial.print(slvDat.mac);
+            Serial.print(" : ");
+            Serial.print(WEARABLE_BASE_NAME);
+            Serial.println(slvDat.idStr);
+
+            sprintf(slvBuf3,"AT+CO0%s",slvDat.mac);
+            hmSlave.print(slvBuf3);
+
+            BLEstate = READY;
+            BLEslaveDisc=false;
         }
     }
     else if(BLEstate == CONNECTED) {
+        slvRead(slvBuf);
+    }
+    else if(BLEstate == READY) {
         
+    }
+}
+
+//look for slaves
+void parseSlave(char *buf,int len) {
+    int i=0;
+    int macI=0;
+    int namI=0;
+    char *p=buf;
+    while(i<len) {
+        //skip to start
+        while(p[i]!=':') {
+            if(i>=len)break;
+            i++;
+        }
+        i++;
+        macI=i;//get mac index
+        //memcpy(slvBuf2,p+macI,12);
+        //Serial.println(slvBuf2);
+        while(p[i]!=':') {
+            if(i>=len)break;
+            i++;
+        }
+        i++;
+        namI=i;//get the name index
+        //memcpy(slvBuf2,p+namI,wearable_base_name_len);
+        //Serial.println(slvBuf2);
+        Serial.println("Device found");
+        //check against base name
+        if(strncmp(WEARABLE_BASE_NAME,p+namI,wearable_base_name_len)==0) {
+            //found slave
+            memset(slvDat.idStr,'0',8);
+            memcpy(slvDat.mac,p+macI,12);
+            memcpy(slvDat.idStr+wearable_id_offset,p+namI+wearable_base_name_len,wearable_id_len);
+            slvDat.id=atoi(slvDat.idStr);
+            Serial.println("Found slave");
+            Serial.println(slvDat.idStr);
+            Serial.println(slvDat.mac);
+            BLEslaveDisc = true;
+        }
+        else {
+            Serial.println("Not our slave. We should not enslave this");
+        }
     }
 }
 
@@ -630,7 +733,7 @@ void bacReadChk() {
 void loop() {
     //serialCmd();  
     slvTaskChk();
-    bacTaskChk();
-    bacReadChk();
-    wifiTaskChk();
+    //bacTaskChk();
+    //bacReadChk();
+    //wifiTaskChk();
 }
