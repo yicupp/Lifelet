@@ -583,9 +583,9 @@ void get_mpudata() {
 void send_data() {
     //send a packet once x seconds
     if(millis()-pack_time>=BLE_DATA_PERIOD) {
-        Serial.println("Computation delay");
-        Serial.println(millis()-t);
-        Serial.println("Sending packet");
+        //Serial.println("Computation delay");
+        //Serial.println(millis()-t);
+        //Serial.println("Sending packet");
         t=millis();
 
         dtostrf(AM,6,2,strAm);
@@ -593,7 +593,7 @@ void send_data() {
         sprintf(usrBuff,"%c%d%c%d%c%s%c%d%c%d",CHAR_HUMIDITY,int(humid),CHAR_TEMP,int(temp)
         ,CHAR_SVM,strAm,CHAR_STEP_COUNT,step_count,CHAR_FALL_DETECTED,fall);
         hmSlave.write(usrBuff);
-        Serial.println(usrBuff);
+        //Serial.println(usrBuff);
 /*      
         //temp
         sprintf(usrBuff,"temp: %d\r\n",int(temp));

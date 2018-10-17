@@ -366,8 +366,8 @@ struct BLEslaveData {
     char mac[13]={'\0'};
     int  id = 0;
     char idStr[9]={'\0'};
-    char step_count[1]={'\0'};
-    char svm[5]={'\0'};
+    char step_count[10]={'\0'};
+    char svm[10]={'\0'};
     char temp[4]={'\0'};
     char fall_detected[2]={'\0'};
     char humidity[4]={'\0'};
@@ -442,7 +442,7 @@ int slvTask() {
         else {
             BLEconnectTimer = millis();
         }
-        slvStoreData(slvBuf,slvBufLen);
+        if(slvBufLen>15) slvStoreData(slvBuf,slvBufLen);
     }
     else if(BLEstate == READY) {
         slvRead(slvBuf);
@@ -465,8 +465,8 @@ int slvTask() {
     char mac[13]={'\0'};
     int  id = 0;
     char idStr[9]={'\0'};
-    char step_count[1]={'\0'};
-    char svm[5]={'\0'};
+    char step_count[10]={'\0'};
+    char svm[10]={'\0'};
     char temp[4]={'\0'};
     char fall_detected[2]={'\0'};
     char humidity[4]={'\0'};
@@ -477,12 +477,17 @@ int slvTask() {
 void slvStoreData(char *buf,int len) {
     char *p = buf;
     int i = 0;
+    int x = 0;
     while(i<len) {
         while(p[i]>'z'||p[i]<'a') i++;
+        x = i;
         i++;
-        switch(p[i]) {
+        //Serial.println(p[i]);
+        switch(p[x]) {
             case CHAR_TEMP:
+                //Serial.println(*(p+i));
                 memcpy(slvDat.temp,p+i,3);
+                //Serial.println(slvDat.temp);
                 if(slvDat.temp[2]>'9'||slvDat.temp[2]<'0') {
                     slvDat.temp[2]='\0';
                 }
@@ -497,7 +502,9 @@ void slvStoreData(char *buf,int len) {
                 strcpy(slvDat.step_count,"123");
             break;
             case CHAR_SVM:
-                memcpy(slvDat.svm,p+i,6);
+                while(p[x]>'9'||p[x]<'0') x++;
+                memcpy(slvDat.svm,p+x,6+i-x);
+                //Serial.println(slvDat.svm);
                 i+=4;
             break;
             case CHAR_FALL_DETECTED:
@@ -506,6 +513,13 @@ void slvStoreData(char *buf,int len) {
         }
         i++;
     }
+    Serial.println("Data stored");
+    slvDatPush = true;
+    Serial.println(slvDat.humidity);
+    Serial.println(slvDat.temp);
+    Serial.println(slvDat.svm);
+    Serial.println(slvDat.step_count);
+    Serial.println(slvDat.fall_detected);
     
 }
 
