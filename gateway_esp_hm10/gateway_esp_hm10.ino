@@ -103,17 +103,17 @@ static char cmdBuf[CMD_BUF_LEN] = {'\0'};
 #include <WiFi.h>
 WiFiClient client;
 
-//const char* ssid     = "Terrortown";
+const char* ssid     = "Terrortown";
 //const char* ssid     = "yicup";
-//const char* password = "aaaaaaaa";
+const char* password = "aaaaaaaa";
 
-const char* ssid     = "SDN_1";
-const char* password = "openflow";
+//const char* ssid     = "SDN_1";
+//const char* password = "openflow";
 //const char* endpoint = "/tablestore1";
 const char* endpoint = "/testing";
 
 //const char* host = "47.91.46.124";
-const char* host = "47.91.42.94 ";
+const char* host = "47.91.42.94";
 //const char* host = "192.168.10.22"; 
 //const char* host = "www.google.com.au"; 
 
@@ -206,7 +206,7 @@ void setup() {
     hmBacon.begin(9600, SERIAL_8N1, 13, 14);
 
     
-    Serial.begin(9600);
+    Serial.begin(115200);
     Serial.println("***********************************************\n");
     Serial.println( "Initialising BLE" ); 
 
@@ -300,7 +300,7 @@ bool WIFIconnected = false;
 
 
 #define SLAVE_PERIOD    70
-#define WIFI_PERIOD     333
+#define WIFI_PERIOD     100
 #define BACON_PERIOD    1200
 #define BACON_READ_PERIOD 200
 
@@ -763,7 +763,7 @@ bool hostPrevConnected = false;
 //Wifi task: upload data to cloud
 int wifiTask() {
     int wifiState = WiFi.status();
-    if(wifiState == WL_IDLE_STATUS) {
+    if(wifiState == WL_IDLE_STATUS || (wifiState != WL_CONNECTED && wifiPrevState == WL_IDLE_STATUS)) {
         Serial.print("Still attempting to connect to");
         Serial.println(ssid);
         wifiPrevState = wifiState;
@@ -771,15 +771,19 @@ int wifiTask() {
     }
     if(wifiState == WL_CONNECT_FAILED) {
         Serial.println("Connection failed");
-        wifiPrevState = wifiState;
+        wifiPrevState = WL_DISCONNECTED;
         return 1;
     }
     if(wifiState != WL_CONNECTED) {
         if(wifiPrevState == WL_CONNECTED) {
             Serial.println("Wifi no connection. Reconnecting...");
         }
-        wifiPrevState = WL_DISCONNECTED;
+        wifiPrevState = WL_IDLE_STATUS;
         wifiConnect();
+        while(WiFi.status()!=WL_CONNECTED) {}
+        Serial.println("Wifi connected");
+        Serial.println("IP address: ");
+        Serial.println(WiFi.localIP());
         return 1;
     }
     if(wifiPrevState != WL_CONNECTED && wifiState == WL_CONNECTED) {
@@ -799,7 +803,7 @@ int wifiTask() {
             Serial.println("Starting new connection to server");
         }
         else {
-            Serial.println("Lost connection. Reconnecting to server");
+            Serial.println("-----------Lost connection. Reconnecting to server-------");
         }
         const int httpPort = 8000;
         if (!client.connect(host, httpPort)) {
@@ -809,6 +813,8 @@ int wifiTask() {
         }
         Serial.print("Successfully connected to ");
         Serial.println(host);
+        //Serial.println("Delaying for 200ms");
+        //delay(200);
         hostPrevConnected = true;
     }
     else {
@@ -891,15 +897,15 @@ endpoint,host,bodLen,wifiBacBuf);
 #endif
     client.print(wifiBuf);
 
-/*
-    while (client.available() == 0) {}
+    unsigned long t = millis();
+    while (client.available() == 0 && millis()-t>85) {}
 
     // Read all the lines of the reply from server and print them to Serial
     while(client.available()) {
         String line = client.readStringUntil('\r');
         Serial.print(line);
     }
-*/
+
     return 0;
 }
 
@@ -957,15 +963,16 @@ endpoint,host,bodLen,wifiContBuf);
     Serial.println(wifiBuf);
 #endif
     client.print(wifiBuf);
-/*
-    while (client.available() == 0) {}
+
+    unsigned long t=millis();
+    while (client.available() == 0 && millis()-t>85) {}
 
     // Read all the lines of the reply from server and print them to Serial
     while(client.available()) {
         String line = client.readStringUntil('\r');
         Serial.print(line);
     }
-*/
+
     
     return 0;
 }
