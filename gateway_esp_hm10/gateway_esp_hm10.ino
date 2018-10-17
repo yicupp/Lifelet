@@ -64,6 +64,7 @@
 #define NOPRINT0 //don't print buffer reads
 #define NOPRINT1 //don't print sent packet contents
 #define NOPRINT2 //don't print received packet contents
+#define NOPRINT3 //don't print misc data
 
 #define SLAVE_ADV_UUID0     "AAAAAAAA" //Type is slave
 //#define SLAVE_ADV_UUID1     "00000001" //id is 1
@@ -108,6 +109,8 @@ WiFiClient client;
 
 const char* ssid     = "SDN_1";
 const char* password = "openflow";
+//const char* endpoint = "/tablestore1";
+const char* endpoint = "/testing";
 
 //const char* host = "47.91.46.124";
 const char* host = "47.91.42.94 ";
@@ -374,7 +377,9 @@ void serialCmd() {
             i++;
         }
         usrBuf[i]='\0';
+        #ifndef NOPRINT3
         Serial.println(usrBuf);
+        #endif
     }
     while(Serial.available() > 0) {
         char in = Serial.read();//Serial.println(millis());
@@ -541,13 +546,17 @@ void slvStoreData(char *buf,int len) {
         }
         i++;
     }
-    Serial.println("Data stored");
+
     slvDatPush = true;
+    #ifndef NOPRINT3
+    Serial.println("Data stored");    
     Serial.println(slvDat.humidity);
     Serial.println(slvDat.temp);
     Serial.println(slvDat.svm);
     Serial.println(slvDat.step_count);
     Serial.println(slvDat.fall_detected);
+    #endif
+    
     if(slvDat.fall_detected[0]=='1') {
         Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
         Serial.println("--------FALL  DETECTED-------");
@@ -593,7 +602,9 @@ void parseSlave(char *buf,int len) {
             BLEslaveDisc = true;
         }
         else {
+            #ifndef NOPRINT3
             Serial.println("Not our slave. We should not enslave this");
+            #endif
         }
     }
 }
@@ -648,10 +659,14 @@ void parseDISI(char *p, int len) {
         }
         i++;
         memcpy(buf0,p+i,8);//get manufacturer id
+        #ifndef NOPRINT3
         Serial.println(buf0);
+        #endif
         //Serial.println(BLE_RES_FILTER);
         if(strcmp(buf0,BLE_RES_FILTER)) { //wrong id? skip
+            #ifndef NOPRINT3
             Serial.println(strcmp(buf0,BLE_RES_FILTER));
+            #endif
             Serial.println("Skipped device");
         }
         else {
@@ -673,13 +688,16 @@ void parseDISI(char *p, int len) {
             i++;//skip :
             memcpy(buf5,p+i,4);//get rssi
             i+=4;
-            
+
+            #ifndef NOPRINT3
             Serial.println(buf0);//id0
             Serial.println(buf1);//id1
             Serial.println(buf2);//id2
             Serial.println(buf3);//id3
             Serial.println(buf4);//mac
             Serial.println(buf5);//rssi
+            #endif
+            
             if(strcmp(buf0,BEACON_ADV_UUID0)==0&&strcmp(buf1,buf2)==0&&strcmp(buf3,BEACON_ADV_UUID3)==0) {
                 addEntry();
             }
@@ -710,9 +728,9 @@ int addEntry() {
     memcpy(bacData[i].idStr,buf1,8);
     Serial.print("Logged at index");
     Serial.print(i);
-    Serial.print('/');
+    Serial.print(" / ");
     Serial.print(bacNumID);
-    Serial.print("devs. ");
+    Serial.print(" devs. ");
     Serial.print(" : ");
     Serial.print(bacData[i].id);
     Serial.write(' ');
@@ -859,14 +877,14 @@ KEY_RSSI,bacData[i].rssiStr
 
 int bodLen=strlen(wifiBacBuf);
     sprintf(wifiBuf,
-"PUT /tablestore1 HTTP/1.1\r\n"
+"PUT %s HTTP/1.1\r\n"
 "Host: %s:8000\r\n"
 "Content-Type: application/json\r\n"
 "Connection: keep-alive\r\n"
 "Content-Length: %d\r\n"
 "\r\n"
 "%s",
-host,bodLen,wifiBacBuf);
+endpoint,host,bodLen,wifiBacBuf);
 
 #ifndef NOPRINT1
     Serial.println(wifiBuf);
@@ -926,14 +944,14 @@ KEY_FALL_DETECTED,slvDat.fall_detected[0]
 ); 
     int bodLen=strlen(wifiContBuf);
     sprintf(wifiBuf,
-"PUT /tablestore1 HTTP/1.1\r\n"
+"PUT %s HTTP/1.1\r\n"
 "Host: %s:8000\r\n"
 "Content-Type: application/json\r\n"
 "Connection: keep-alive\r\n"
 "Content-Length: %d\r\n"
 "\r\n"
 "%s",
-host,bodLen,wifiContBuf);
+endpoint,host,bodLen,wifiContBuf);
 
 #ifndef NOPRINT1
     Serial.println(wifiBuf);
