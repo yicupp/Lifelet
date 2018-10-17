@@ -62,6 +62,23 @@
 #define RENEW_DELAY     2000
 #define DEBUG
 
+
+#define SLAVE_ADV_UUID0     "AAAAAAAA" //Type is slave
+//#define SLAVE_ADV_UUID1     "00000001" //id is 1
+//#define SLAVE_ADV_UUID2     "00000001"
+#define SLAVE_ADV_UUID3     "AAAAAAAA"
+
+#define SLAVE_ADV_MAJOR     "11111111"
+#define SLAVE_ADV_MINOR     "00000001"
+
+#define BEACON_ADV_UUID0    "BBBBBBBB" //type is beacon
+//#define BEACON_ADV_UUID1    "00000001" //id is 1
+//#define BEACON_ADV_UUID2    "00000001"
+#define BEACON_ADV_UUID3    "BBBBBBBB"
+
+#define BEACON_ADV_MAJOR    "22222222"
+#define BEACON_ADV_MINOR    "00000001"
+
 #define WEARABLE_BASE_NAME "LLWearable"
 #define GATEWAY_BASE_NAME  "LLGate1"
 //#define WEARABLE_BASE_NAME "device"
@@ -650,7 +667,7 @@ void parseDISI(char *p, int len) {
             Serial.println(buf3);//id3
             Serial.println(buf4);//mac
             Serial.println(buf5);//rssi
-            if(strcmp(buf0,buf3)==0&&strcmp(buf1,buf2)==0) {
+            if(strcmp(buf0,BEACON_ADV_UUID0)==0&&strcmp(buf1,buf2)==0&&strcmp(buf3,BEACON_ADV_UUID3)==0) {
                 addEntry();
             }
         }
@@ -660,10 +677,10 @@ void parseDISI(char *p, int len) {
 int addEntry() {
     int id = atoi(buf1);
     int i = 0;
-    while(bacData[i].id != id && i<=bacNumID-1) {
+    while(bacData[i].id != id && i<bacNumID) {
         i++;
     }
-    if(i == BAC_NUM_DEV) {
+    if(i == BAC_NUM_DEV && bacData[i].id != id) {
         Serial.println("No space for beacon data");
         return 1;
     }
@@ -689,7 +706,7 @@ int addEntry() {
     Serial.print(bacData[i].rssi);
     Serial.write(' ');
     Serial.println(bacData[i].t);
-
+    return 0;
 }
 
 //Bacon task: read beacon information
@@ -795,30 +812,45 @@ int wifiTask() {
 }
 
 char contLenStr[11] = {'\0'};
+#define WIFI_BAC_BUF_SIZE 2000
+char wifiBacBuf[WIFI_BAC_BUF_SIZE] = {'\0'};
 
 int wifiSendBacPac(int i) {
-    return 5;
-    int contLen = 15+BAC_CONST_SIZE+50+19;
-    sprintf(contLenStr,"%d",contLen); 
 
     while(client.available()) {
         String line = client.readStringUntil('\r');
         Serial.print(line);
     }
       
-    client.print( String(
-"PUT /tablestore1 HTTP/1.1")+"\r\n"+
-"Host: "+host+":8000\r\n"+
-"Content-Type: application/json"+"\r\n"+
-"Connection: keep-alive"+"\r\n"+
-"Content-Length: "+contLenStr+"\r\n"+
-"\r\n"+
-"{"+"\r\n"+
-"\""+KEY_GATEWAY_NAME+"\" : \""+GATEWAY_BASE_NAME+"\",\r\n"+
-"\""+KEY_DEV_NAME+"\" : \""+String(bacData[i].mac)+WEARABLE_BASE_NAME+String(bacData[i].idStr)+"\",\r\n"+
-"\"data_type\" : \"rssi\",\r\n"+
-"\""+KEY_RSSI+"\" : \""+String(bacData[i].rssiStr)+"\"\r\n"+
-"}\r\n\r\n");
+    Serial.println("\n\n~~~Beacon packet~~~\n");
+    sprintf(wifiBacBuf, 
+"\n"
+"{\n"
+"\"%s\" : \"%s\",\n"
+"\"%s\" : \"%s%d\",\n"
+"\"data_type\" : \"rssi\",\n"
+"\"%s\" : \"%s\",\n"
+"}\n"
+"\n",
+KEY_GATEWAY_NAME,GATEWAY_BASE_NAME,
+KEY_DEV_NAME,WEARABLE_BASE_NAME,bacData[i].id,
+KEY_RSSI,bacData[i].rssiStr 
+);
+
+int bodLen=strlen(wifiBacBuf);
+    sprintf(wifiBuf,
+"PUT /tablestore1 HTTP/1.1\r\n"
+"Host: %s:8000\r\n"
+"Content-Type: application/json\r\n"
+"Connection: keep-alive\r\n"
+"Content-Length: %d\r\n"
+"\r\n"
+"%s",
+host,bodLen,wifiBacBuf);
+
+    Serial.println(wifiBuf);
+    client.print(wifiBuf);
+
 /*
     while (client.available() == 0) {}
 
@@ -840,9 +872,7 @@ int wifiSendSlvPac() {
         Serial.print(line);
     }
 
-    Serial.println("Packet body");
-    //Serial.println(slvDat.mac);
-    //Serial.println(slvDat.id);
+    Serial.println("\n\n~~~Sensor packet~~~\n");
     sprintf(wifiContBuf,
 "\n"
 "{\n"
