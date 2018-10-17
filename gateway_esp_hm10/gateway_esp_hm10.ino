@@ -461,17 +461,6 @@ int slvTask() {
     }
 }
 
-/*struct BLEslaveData {
-    char mac[13]={'\0'};
-    int  id = 0;
-    char idStr[9]={'\0'};
-    char step_count[10]={'\0'};
-    char svm[10]={'\0'};
-    char temp[4]={'\0'};
-    char fall_detected[2]={'\0'};
-    char humidity[4]={'\0'};
-    char rssi[5] = {'\0'};
-};*/
 
 //store slave data
 void slvStoreData(char *buf,int len) {
@@ -520,7 +509,7 @@ void slvStoreData(char *buf,int len) {
     Serial.println(slvDat.svm);
     Serial.println(slvDat.step_count);
     Serial.println(slvDat.fall_detected);
-    if(slvDat.fall_detected=='1') {
+    if(slvDat.fall_detected[0]=='1') {
         Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
         Serial.println("--------FALL  DETECTED-------");
         Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
@@ -782,6 +771,17 @@ int wifiTask() {
         Serial.println("No beacon logs to upload");
     }
 
+    //send sensor data if any
+    if(slvDatPush == true) {
+        Serial.println("Pushing sensor data");
+        wifiSendSlvPac();
+        Serial.println("Sensor data push complete");
+        slvDatPush = false;
+    }
+    else {
+        Serial.println("No sensor data to push");
+    }
+
     return 0;
 }
 
@@ -820,6 +820,57 @@ int wifiSendBacPac(int i) {
 */
     return 0;
 }
+
+#define WIFI_SLV_BUF_SIZE 2000
+char wifiContBuf[WIFI_SLV_BUF_SIZE] = {'\0'};
+
+int wifiSendSlvPac() {
+    return 5;
+    while(client.available()) {
+        String line = client.readStringUntil('\r');
+        Serial.print(line);
+    }
+
+    Serial.println("Packet body");
+    //Serial.println(slvDat.mac);
+    //Serial.println(slvDat.id);
+    sprintf(wifiContBuf,
+"\n"
+"{\n"
+"\"%s\" : \"%s\",\n"
+"\"%s\" : \"%s%s%s\",\n"
+"\"data_type\" : \"sensor\",\n"
+"\"%s\" : \"%s\",\n"
+"\"%s\" : \"%s\",\n"
+"\"%s\" : \"%s\",\n"
+"\"%s\" : \"%s\",\n"
+"\"%s\" : \"%c\"\n"
+"}\n",
+KEY_GATEWAY_NAME,GATEWAY_BASE_NAME,
+KEY_DEV_NAME,slvDat.mac,WEARABLE_BASE_NAME,slvDat.idStr,
+KEY_TEMP,slvDat.temp,
+KEY_HUMIDITY,slvDat.humidity,
+KEY_SVM,slvDat.svm,
+KEY_STEP_COUNT,slvDat.step_count,
+KEY_FALL_DETECTED,slvDat.fall_detected[0]
+); 
+    int bodLen=strlen(wifiContBuf);
+    sprintf(wifiBuf,
+"PUT /tablestore1 HTTP/1.1\r\n"
+"Host: %s:80\r\n"
+"Content-Type: application/json\r\n"
+"Connection: keep-alive\r\n"
+"Content-Length: %d\r\n"
+"\r\n"
+"%s",
+host,bodLen,wifiContBuf);
+
+    Serial.println(wifiBuf);
+    client.print(wifiBuf);
+    
+    return 0;
+}
+
 int wifiConnect() {
     Serial.print("Connecting to ");
     Serial.println(ssid);
@@ -871,7 +922,7 @@ void bacReadChk() {
 void loop() {
     //serialCmd();  
     slvTaskChk();
-    //bacTaskChk();
-    //bacReadChk();
-    //wifiTaskChk();
+    bacTaskChk();
+    bacReadChk();
+    wifiTaskChk();
 }
