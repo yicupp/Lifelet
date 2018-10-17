@@ -38,7 +38,7 @@ unsigned long t_3 = 0;
 
 unsigned long count=0;
 
-#define FALL_RESET_TIME 15000
+#define FALL_RESET_TIME 30000
 unsigned long fall_reset_timer = 0;
 
 //Pedometer
@@ -449,20 +449,23 @@ void loop() {
 void dht11(){
   DHT.read11(DHT11_PIN);
  // Serial.print("Temperature = ");
-#ifdef SENSOR_DEBUG
-  Serial.print("Temperature : ");
-#endif
+
   if( DHT.temperature != - 999){
     temp = DHT.temperature;
   };
-  Serial.println(temp);
 #ifdef SENSOR_DEBUG
-  Serial.print("Humidity : ");
+  Serial.print("Temperature : ");
+  Serial.println(temp);
 #endif
+  
   if( DHT.humidity != - 999) {
     humid = DHT.humidity;
   };
-  Serial.println(humid);
+#ifdef SENSOR_DEBUG
+  Serial.print("Humidity : ");
+  Serial.println(humid);  
+#endif
+
 }
 int AM_LT() {
   get_mpudata();
@@ -558,6 +561,7 @@ void get_mpudata() {
   else Serial.print(" 0 ");
   if(trigger3) Serial.print(" 1 ");
   else Serial.print(" 0 ");
+  Serial.println();
   step_count();
   
   
@@ -579,7 +583,7 @@ void get_mpudata() {
 #endif
   send_data();
 }
-#define TIME_DEBUG
+//#define TIME_DEBUG
 void send_data() {
     //send a packet once x seconds
     if(millis()-pack_time>=BLE_DATA_PERIOD) {
@@ -589,9 +593,9 @@ void send_data() {
         t=millis();
 
         dtostrf(AM,6,2,strAm);
-        step_count = 0;
+        //step_count = 0;
         sprintf(usrBuff,"%c%d%c%d%c%s%c%d%c%d",CHAR_HUMIDITY,int(humid),CHAR_TEMP,int(temp)
-        ,CHAR_SVM,strAm,CHAR_STEP_COUNT,step_count,CHAR_FALL_DETECTED,fall);
+        ,CHAR_SVM,strAm,CHAR_STEP_COUNT,1234,CHAR_FALL_DETECTED,fall);
         hmSlave.write(usrBuff);
         //Serial.println(usrBuff);
 /*      
@@ -649,8 +653,8 @@ Serial.println(millis()-t);
 Serial.println(millis()-t); 
 #endif
 
-        Serial.println("Packet sending delay");
-        Serial.println(millis()-t);
+        //Serial.println("Packet sending delay");
+        //Serial.println(millis()-t);
         
         
     }

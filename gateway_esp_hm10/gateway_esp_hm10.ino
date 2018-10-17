@@ -520,7 +520,11 @@ void slvStoreData(char *buf,int len) {
     Serial.println(slvDat.svm);
     Serial.println(slvDat.step_count);
     Serial.println(slvDat.fall_detected);
-    
+    if(slvDat.fall_detected=='1') {
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("--------FALL  DETECTED-------");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+    }
 }
 
 //look for slaves
