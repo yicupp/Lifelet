@@ -115,6 +115,9 @@ const char* host = "47.91.42.94 ";
 char *http_buff[500] = {'\0'};
 // \wifi
 
+unsigned long wifiSlvTime = 0;
+unsigned long wifiBactime = 0;
+
 void bacCmd(char * cmd, unsigned long tos, unsigned long tof) {
     int i = 0;
     //send at command
@@ -272,7 +275,9 @@ void setup() {
     Serial.println( "" );
     slvCmd("SAVE1", TOS_SLV, TOF_SLV);
     Serial.println( "" );
-    
+
+    wifiBacTime=millis();
+    wifiSlvTime=millis();
     Serial.setTimeout(25);
     sysClk=millis();
     slvSchedT=millis()+slvSchedT;
@@ -822,7 +827,11 @@ int wifiSendBacPac(int i) {
         Serial.print(line);
     }
       
-    Serial.println("\n\n~~~Beacon packet~~~\n");
+    Serial.println("\n\n~~~Bacon packet~~~\n");
+    Serial.print("time since last bacon packet: ");
+    Serial.println(millis()-wifiBacTime);
+    wifiBacTime = millis(); 
+    
     sprintf(wifiBacBuf, 
 "\n"
 "{\n"
@@ -873,6 +882,10 @@ int wifiSendSlvPac() {
     }
 
     Serial.println("\n\n~~~Sensor packet~~~\n");
+    Serial.print("time since last slave packet: ");
+    Serial.println(millis()-wifiSlvTime);
+    wifiSlvTime = millis(); 
+    
     sprintf(wifiContBuf,
 "\n"
 "{\n"
