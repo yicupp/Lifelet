@@ -38,7 +38,7 @@ unsigned long t_3 = 0;
 
 unsigned long count=0;
 
-#define FALL_RESET_TIME 30000
+#define FALL_RESET_TIME 2000
 unsigned long fall_reset_timer = 0;
 
 //Pedometer
@@ -443,7 +443,9 @@ void setup() {
 
 void loop() {
   get_mpudata();
-  AM_LT();
+  //AM_LT();
+  trigger1=true;
+  AM_UT();
 }
 
 void dht11(){
@@ -522,7 +524,11 @@ int AM_OC() {
 
 int DEAD() {
   unsigned long t_4 = millis();
-  while(millis()-t_4 <= 200) {}
+  while(millis()-t_4 <= 1000) {
+    get_mpudata();
+    angleChange = pow(pow(gx, 2) + pow(gy, 2) + pow(gz, 2), 0.5); //Serial.println(angleChange);
+    
+  }
   while(millis()-t_4 <= 2000) {
     get_mpudata();
     angleChange = pow(pow(gx, 2) + pow(gy, 2) + pow(gz, 2), 0.5); //Serial.println(angleChange);

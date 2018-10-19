@@ -103,14 +103,14 @@ static char cmdBuf[CMD_BUF_LEN] = {'\0'};
 #include <WiFi.h>
 WiFiClient client;
 
-const char* ssid     = "Terrortown";
-//const char* ssid     = "yicup";
+//const char* ssid     = "Terrortown";
+const char* ssid     = "yicup";
 const char* password = "aaaaaaaa";
 
 //const char* ssid     = "SDN_1";
 //const char* password = "openflow";
-//const char* endpoint = "/tablestore1";
-const char* endpoint = "/testing";
+const char* endpoint = "/tablestore1";
+//const char* endpoint = "/testing";
 
 //const char* host = "47.91.46.124";
 const char* host = "47.91.42.94";
@@ -300,7 +300,7 @@ bool WIFIconnected = false;
 
 
 #define SLAVE_PERIOD    70
-#define WIFI_PERIOD     100
+#define WIFI_PERIOD     200
 #define BACON_PERIOD    1200
 #define BACON_READ_PERIOD 200
 
