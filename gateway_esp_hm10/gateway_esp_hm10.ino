@@ -511,6 +511,8 @@ void slvStoreData(char *buf,int len) {
     char *p = buf;
     int i = 0;
     int x = 0;
+    int sci = i+1;
+    int count = 0;
     Serial.println(p);
     while(i<len) {
         while(p[i]>'z'||p[i]<'a') i++;
@@ -533,17 +535,17 @@ void slvStoreData(char *buf,int len) {
                 }
             break;
             case CHAR_STEP_COUNT:
-                {int sci = i;
-                int count = 0;
-                while(p[sci]>'0'&&p[sci]<'9') {
-                    Serial.print(p[sci]);
-                    slvDat.step_count[count]=p[sci];
-                    sci++;
+                x++;
+                count = 0;
+                while(p[x]>='0'&&p[x]<='9') {
+                    Serial.print(p[x]);
+                    slvDat.step_count[count]=p[x];
+                    x++;
                     count++;
                 }
                 slvDat.step_count[count]='\0';
 //                //strcpy(slvDat.step_count,"123");
-                }
+                
             break;
             case CHAR_SVM:
                 while(p[x]>'9'||p[x]<'0') x++;
@@ -555,7 +557,6 @@ void slvStoreData(char *buf,int len) {
                 slvDat.fall_detected[0]=p[i];
             break;
         }
-        i++;
     }
 
     slvDatPush = true;
@@ -982,9 +983,9 @@ KEY_FALL_DETECTED,slvDat.fall_detected[0]
 "%s",
 endpoint,host,bodLen,wifiContBuf);
 
-#ifndef NOPRINT1
+//#ifndef NOPRINT1
     Serial.println(wifiBuf);
-#endif
+//#endif
     client.print(wifiBuf);
 
     unsigned long t=millis();

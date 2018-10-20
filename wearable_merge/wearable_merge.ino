@@ -50,7 +50,7 @@ int pedSteps=0;
 float pedAvg=0;
 float pedSum = 0;
 #define PED_THRES_LOWER 8
-#define PED_THRES_UPPER 11.4
+#define PED_THRES_UPPER 10.5
 
 #define STEP_PEAK_1     1         
 #define STEP_LOW_1     2
@@ -616,9 +616,11 @@ void send_data() {
         dtostrf(AM,6,2,strAm);
         //step_count = 0;
         sprintf(usrBuff,"%c%d%c%d%c%s%c%d%c%d",CHAR_HUMIDITY,int(humid),CHAR_TEMP,int(temp)
-        ,CHAR_SVM,strAm,CHAR_STEP_COUNT,numSteps,CHAR_FALL_DETECTED,fall);
+        ,CHAR_SVM,strAm,CHAR_FALL_DETECTED,fall,CHAR_STEP_COUNT,numSteps);
         hmSlave.write(usrBuff);
         //Serial.println(usrBuff);
+        //Serial.print(CHAR_FALL_DETECTED);
+        //Serial.print(fall);
 /*      
         //temp
         sprintf(usrBuff,"temp: %d\r\n",int(temp));
