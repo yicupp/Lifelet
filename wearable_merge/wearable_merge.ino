@@ -49,8 +49,22 @@ float pedMax=0;;
 int pedSteps=0;
 float pedAvg=0;
 float pedSum = 0;
-#define PED_THRES_LOWER 
-#define PED_THRES_UPPER 
+#define PED_THRES_LOWER 8
+#define PED_THRES_UPPER 11.4
+
+#define STEP_PEAK_1     1         
+#define STEP_LOW_1     2
+#define STEP_PEAK_2     3
+#define STEP_LOW_2      4        
+#define STEP_DEBOUNCE_T     100
+unsigned long numOscil = 0;
+unsigned long numSteps = 0;
+#define STEP_MAX_PERIOD  500
+
+int step_state = STEP_LOW_1;
+unsigned long stepTimer = 0;
+
+
 
 //
 
@@ -62,11 +76,11 @@ SoftwareSerial hmSlave(4,5);        //Rx,Tx
 
 int LEDPIN = 13;
 
-#define SLAVE_NAME      "LLWearable01"
-#define BEACON_NAME     "LIFELETB0001"
+#define SLAVE_NAME      "LLWearable02"
+#define BEACON_NAME     "LIFELETB0002"
 
 #define DEVICE_ID           1
-#define DEVICE_NAME         "LLWearable01"
+#define DEVICE_NAME         "LLWearable02"
 
 #define SLAVE_SERV_ID    "0x1234"
 #define BEACON_SERV_ID   "0xABCD"
@@ -78,16 +92,16 @@ int LEDPIN = 13;
 #define BEACON_MEAS_POW     "0xC5"
 
 #define SLAVE_ADV_UUID0     "AAAAAAAA" //Type is slave
-#define SLAVE_ADV_UUID1     "00000001" //id is 1
-#define SLAVE_ADV_UUID2     "00000001"
+#define SLAVE_ADV_UUID1     "00000002" //id is 1
+#define SLAVE_ADV_UUID2     "00000002"
 #define SLAVE_ADV_UUID3     "AAAAAAAA"
 
 #define SLAVE_ADV_MAJOR     "11111111"
 #define SLAVE_ADV_MINOR     "00000001"
 
 #define BEACON_ADV_UUID0    "BBBBBBBB" //type is beacon
-#define BEACON_ADV_UUID1    "00000001" //id is 1
-#define BEACON_ADV_UUID2    "00000001"
+#define BEACON_ADV_UUID1    "00000002" //id is 1
+#define BEACON_ADV_UUID2    "00000002"
 #define BEACON_ADV_UUID3    "BBBBBBBB"
 
 #define BEACON_ADV_MAJOR    "22222222"
@@ -435,6 +449,7 @@ void setup() {
     pack_time = millis();
     sample_time = millis();
     fall_reset_timer = millis();
+    stepTimer=millis();
 }
 
 
@@ -533,7 +548,7 @@ int DEAD() {
     get_mpudata();
     angleChange = pow(pow(gx, 2) + pow(gy, 2) + pow(gz, 2), 0.5); //Serial.println(angleChange);
     Serial.println(angleChange);
-    if(angleChange >= 35) return 1;
+    if(angleChange >= 50) return 1;
   }
   Serial.println("Fall detected");
   fall=true;
@@ -601,7 +616,7 @@ void send_data() {
         dtostrf(AM,6,2,strAm);
         //step_count = 0;
         sprintf(usrBuff,"%c%d%c%d%c%s%c%d%c%d",CHAR_HUMIDITY,int(humid),CHAR_TEMP,int(temp)
-        ,CHAR_SVM,strAm,CHAR_STEP_COUNT,1234,CHAR_FALL_DETECTED,fall);
+        ,CHAR_SVM,strAm,CHAR_STEP_COUNT,numSteps,CHAR_FALL_DETECTED,fall);
         hmSlave.write(usrBuff);
         //Serial.println(usrBuff);
 /*      
@@ -665,6 +680,7 @@ Serial.println(millis()-t);
         
     }
 }
+
 
 void mpu_read() {
   dht11();
@@ -740,15 +756,61 @@ int beaGet( int to_start, int to_finish, char *buff, int buff_size ) {
     buff[charc] = '\0';
     return 0;
 }
-
+        
 
 
 void step_count() {
-    float DataToDrop = ped_data[pedI];
-    float DataToAdd = pow((ax*ax+ay*ay+az*az),0.5);
-    ped_data[pedI] = DataToAdd;
-    pedSum -= DataToDrop;
-    pedSum += DataToAdd;
-    pedI++;
-    if(pedI == PED_N) pedI=0;
+    //float mySvm = pow((ax*ax+ay*ay+az*az),0.5);
+    //Serial.println(AM);
+    /*if(AM>12) {
+        Serial.println("ASDADAS");
+        if(millis()-stepTimer > STEP_DEBOUNCE_T) {
+            stepTimer = millis();
+            numOscil++;
+            Serial.println("Oscil detected");
+            numSteps = numOscil/2;
+            Serial.println("Steps: ");
+            Serial.println(numSteps);
+        }
+        stepTimer=millis();
+    }*/
+bool stepInTime ;
+    if(millis()-stepTimer < STEP_MAX_PERIOD) stepInTime=true;
+    else stepInTime = false;
+    
+    if(step_state == STEP_PEAK_1 && stepInTime) {
+        if(AM>PED_THRES_UPPER) {
+            step_state=STEP_LOW_1;
+            stepTimer=millis();
+        }
+    }
+    else if(step_state == STEP_LOW_1 && stepInTime) {
+        if(AM<PED_THRES_LOWER) {
+            step_state = STEP_PEAK_2;
+            numOscil++;
+            numSteps++;
+            stepTimer=millis();
+            Serial.println("Step counted");
+            Serial.println(numSteps);
+        }
+    }
+    else if(step_state == STEP_PEAK_2 && stepInTime) {
+        if(AM>PED_THRES_UPPER) {
+            step_state=STEP_LOW_2;
+            stepTimer=millis();
+        }
+    }
+    else if(step_state == STEP_LOW_2 && stepInTime) {
+        if(AM<PED_THRES_LOWER) {
+            step_state=STEP_PEAK_1;
+            numOscil++;
+            stepTimer=millis();
+        }
+    }
+    else if (!stepInTime){
+        step_state = STEP_LOW_1;
+        stepTimer=millis();
+    }
+    else {
+    }
 }

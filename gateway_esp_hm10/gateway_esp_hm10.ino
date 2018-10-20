@@ -83,7 +83,7 @@
 #define BEACON_ADV_MINOR    "00000001"
 
 #define WEARABLE_BASE_NAME "LLWearable"
-#define GATEWAY_BASE_NAME  "LLGate1"
+#define GATEWAY_BASE_NAME  "LLGate2"
 //#define WEARABLE_BASE_NAME "device"
 //#define GATEWAY_BASE_NAME  "gateway1"
 const int BAC_CONST_SIZE = sizeof(KEY_DEV_NAME)+sizeof(WEARABLE_BASE_NAME)+
@@ -511,6 +511,7 @@ void slvStoreData(char *buf,int len) {
     char *p = buf;
     int i = 0;
     int x = 0;
+    Serial.println(p);
     while(i<len) {
         while(p[i]>'z'||p[i]<'a') i++;
         x = i;
@@ -532,7 +533,17 @@ void slvStoreData(char *buf,int len) {
                 }
             break;
             case CHAR_STEP_COUNT:
-                strcpy(slvDat.step_count,"123");
+                {int sci = i;
+                int count = 0;
+                while(p[sci]>'0'&&p[sci]<'9') {
+                    Serial.print(p[sci]);
+                    slvDat.step_count[count]=p[sci];
+                    sci++;
+                    count++;
+                }
+                slvDat.step_count[count]='\0';
+//                //strcpy(slvDat.step_count,"123");
+                }
             break;
             case CHAR_SVM:
                 while(p[x]>'9'||p[x]<'0') x++;
@@ -559,7 +570,18 @@ void slvStoreData(char *buf,int len) {
     
     if(slvDat.fall_detected[0]=='1') {
         Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
         Serial.println("--------FALL  DETECTED-------");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
+        Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
         Serial.println("!!!!!!!!\\/\\/\\/\\/\\/\\/\\/!!!!!!!");
     }
 }
@@ -892,9 +914,10 @@ int bodLen=strlen(wifiBacBuf);
 "%s",
 endpoint,host,bodLen,wifiBacBuf);
 
-#ifndef NOPRINT1
+Serial.println("\n\n\nwifibuf\n\n\n\n");
+//#ifndef NOPRINT1
     Serial.println(wifiBuf);
-#endif
+//#endif
     client.print(wifiBuf);
 
     unsigned long t = millis();
