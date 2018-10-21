@@ -215,7 +215,7 @@ unsigned long int bacSchedR;
 void setup() {
     hmSlave.begin(9600, SERIAL_8N1, 16, 17);
     hmBacon.begin(9600, SERIAL_8N1, 13, 14);
-    pinMode (ledPin, OUTPUT);
+    
     
     Serial.begin(115200);
     Serial.println("***********************************************\n");
@@ -250,7 +250,7 @@ void setup() {
         devOk = slvOK() & bacOK();
         Serial.println("Slave ok");
     }
-    digitalWrite (ledPin, HIGH);
+    //digitalWrite (ledPin, HIGH);
     Serial.println( "Finding bac Device MAC: " );
     bacCmd( "ADDR?", TOS_BAC, TOF_BAC );
     Serial.println( "" );
@@ -270,7 +270,7 @@ void setup() {
     Serial.println( "Finding slv software version: " );
     slvCmd( "VERR?", TOS_SLV, TOF_SLV );
     Serial.println( "" );
-    digitalWrite (ledPin, LOW);
+    //digitalWrite (ledPin, LOW);
     #ifdef RENEW
         Serial.println("Restoring to default settings");
         bacCmd( "RENEW", TOS_BAC, TOF_BAC );
@@ -318,13 +318,13 @@ void setup() {
 
     wifiBacTime=millis();
     wifiSlvTime=millis();
-    Serial.setTimeout(2);
+    Serial.setTimeout(35);
     //Serial.setTimeout(25);
     sysClk=millis();
     slvSchedT=millis()+slvSchedT;
     wifiSchedT=millis()+wifiSchedT;
     bacSchedT=millis()+bacSchedT;
-
+    pinMode (ledPin, OUTPUT);
     digitalWrite (ledPin, HIGH);
 }
 
@@ -337,7 +337,7 @@ bool WIFIconnected = false;
 
 
 #define SLAVE_PERIOD    70
-#define WIFI_PERIOD     200
+#define WIFI_PERIOD     300
 #define BACON_PERIOD    1200
 #define BACON_READ_PERIOD 200
 
@@ -436,12 +436,14 @@ unsigned long BLEconnectTimer = 0;
 int BLEstate = DISCONNECTED;
 bool BLEslaveDisc = false;
 
-char slvBuf1[13]={'\0'};
+//char slvBuf1[13]={'\0'};
+char slvBuf1[50]={'\0'};
 const int wearable_base_name_len = strlen(WEARABLE_BASE_NAME);
 const int wearable_base_name_id_len = strlen(WEARABLE_BASE_NAME_ID);
 const int wearable_id_len = 12-wearable_base_name_len;
 const int wearable_id_offset = 8-wearable_id_len;
-char slvBuf2[13]={'\0'};
+//char slvBuf2[13]={'\0'};
+char slvBuf2[50]={'\0'};
 char slvBuf3[50]={'\0'};
 
 struct BLEslaveData {
@@ -1065,6 +1067,7 @@ void bacTaskChk() {
 
 void wifiTaskChk() {
     if(millis()>wifiSchedT) {
+        Serial.println("Started wifi task~");
         wifiSchedT=millis()+WIFI_PERIOD;
         wifiTask();
     }
