@@ -75,7 +75,7 @@ SoftwareSerial hmBeacon(10,11);     //RX,TX
 SoftwareSerial hmSlave(4,5);        //Rx,Tx
 
 int LEDPIN = 13;
-
+#define WEARABLE_1
 #ifdef WEARABLE_1
     #define SLAVE_NAME      "LLWearable01"
     #define BEACON_NAME     "LIFELETB0001"

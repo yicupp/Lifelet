@@ -85,12 +85,16 @@ const int ledPin = 5;
 #define WEARABLE_BASE_NAME "LLWearable"
 #define WEARABLE_BASE_NAME_key "device"
 
+
+
 #define GATEWAY_1
 
 #ifdef GATEWAY_1
-    #define GATEWAY_BASE_NAME  "gateway1"
+    #define GATEWAY_BASE_NAME  "LLGate1"
+    #define WEARABLE_BASE_NAME_ID   "01"
 #else
     #define GATEWAY_BASE_NAME  "LLGate2"
+    #define WEARABLE_BASE_NAME_ID   "02"
 #endif
     
 const int BAC_CONST_SIZE = sizeof(KEY_DEV_NAME)+sizeof(WEARABLE_BASE_NAME)+
@@ -434,6 +438,7 @@ bool BLEslaveDisc = false;
 
 char slvBuf1[13]={'\0'};
 const int wearable_base_name_len = strlen(WEARABLE_BASE_NAME);
+const int wearable_base_name_id_len = strlen(WEARABLE_BASE_NAME_ID);
 const int wearable_id_len = 12-wearable_base_name_len;
 const int wearable_id_offset = 8-wearable_id_len;
 char slvBuf2[13]={'\0'};
@@ -646,7 +651,7 @@ void parseSlave(char *buf,int len) {
         //Serial.println(slvBuf2);
         Serial.println("Slave Device found");
         //check against base name
-        if(strncmp(WEARABLE_BASE_NAME,p+namI,wearable_base_name_len)==0) {
+        if(strncmp(WEARABLE_BASE_NAME WEARABLE_BASE_NAME_ID,p+namI,wearable_base_name_len+wearable_base_name_id_len)==0) {
             //found slave
             memset(slvDat.idStr,'0',8);
             memcpy(slvDat.mac,p+macI,12);
