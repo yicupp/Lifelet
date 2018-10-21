@@ -627,8 +627,10 @@ void send_data() {
 
         dtostrf(AM,6,2,strAm);
         //step_count = 0;
-        sprintf(usrBuff,"%c%d%c%d%c%s%c%d%c%d",CHAR_HUMIDITY,int(humid),CHAR_TEMP,int(temp)
-        ,CHAR_SVM,strAm,CHAR_FALL_DETECTED,fall,CHAR_STEP_COUNT,numSteps);
+        //sprintf(usrBuff,"%c%d%c%d%c%s%c%d%c%d",CHAR_HUMIDITY,int(humid),CHAR_TEMP,int(temp)
+        //,CHAR_SVM,strAm,CHAR_FALL_DETECTED,fall,CHAR_STEP_COUNT,numSteps);
+        sprintf(usrBuff,"h0t0%c%s%c%d%c%d",
+        CHAR_SVM,strAm,CHAR_FALL_DETECTED,fall,CHAR_STEP_COUNT,numSteps);
         hmSlave.write(usrBuff);
         //Serial.println(usrBuff);
         //Serial.print(CHAR_FALL_DETECTED);

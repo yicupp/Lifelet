@@ -87,8 +87,8 @@ const int ledPin = 5;
 
 
 
-#define GATEWAY_1
-
+//#define GATEWAY_1
+#define NOBACON
 #ifdef GATEWAY_1
     #define GATEWAY_BASE_NAME  "LLGate1"
     #define WEARABLE_BASE_NAME_ID   "01"
@@ -196,6 +196,9 @@ bool bacOK() {
     if(hmBacon.available() > 0) {
         if(hmBacon.read() == 'O' && hmBacon.read() == 'K') return true;
     }
+    #ifdef NOBACON
+    return true;
+    #endif
     return false;
 }
 bool slvOK() {
@@ -225,6 +228,7 @@ void setup() {
     unsigned long devOkT = millis();
     while(devOk == false) {
         Serial.println("Checking device status");
+        
         while(bacOK()==false){
             if(millis()-devOkT>400) {
                 devOk=false;
@@ -235,6 +239,7 @@ void setup() {
                 break;
             }
         }
+        
         devOkT=millis();
         Serial.println("Bacon ok");
         while(slvOK()==false){
@@ -360,6 +365,12 @@ int slvRead(char *buf) {
         buf[i]=hmSlave.read();
         i++;  
     }
+    delay(20);
+    i = 0;
+    while (hmSlave.available() > 0) {
+        buf[i]=hmSlave.read();
+        i++;  
+    }
     buf[i]='\0';
     #ifndef NOPRINT0
     Serial.println("--Slave read buffer--");
@@ -431,20 +442,20 @@ void serialCmd() {
 #define READY           3 //connecting
 unsigned long BLEconnectTimer = 0;
 #define BLE_SCAN_TIMEOUT    2000
-#define BLE_CONN_TIMEOUT    200
+#define BLE_CONN_TIMEOUT    500
 #define BLE_SLAVE_TIMEOUT   1000
 int BLEstate = DISCONNECTED;
 bool BLEslaveDisc = false;
 
 //char slvBuf1[13]={'\0'};
-char slvBuf1[50]={'\0'};
+char slvBuf1[500]={'\0'};
 const int wearable_base_name_len = strlen(WEARABLE_BASE_NAME);
 const int wearable_base_name_id_len = strlen(WEARABLE_BASE_NAME_ID);
 const int wearable_id_len = 12-wearable_base_name_len;
 const int wearable_id_offset = 8-wearable_id_len;
 //char slvBuf2[13]={'\0'};
-char slvBuf2[50]={'\0'};
-char slvBuf3[50]={'\0'};
+char slvBuf2[500]={'\0'};
+char slvBuf3[500]={'\0'};
 
 struct BLEslaveData {
     char mac[13]={'\0'};
@@ -464,7 +475,18 @@ bool slvDatPush = false;
 //Slave task: read data coming into the port OR connect to device
 int slvTask() {
     //if not connected, start scan
-    if(BLEstate==DISCONNECTED) {
+    slvRead(slvBuf);
+    Serial.println("Slave task");
+    Serial.println(slvBuf);
+    if(BLEstate != CONNECTED && (strstr(slvBuf,"OK+CONN")!=NULL || strstr(slvBuf,"OK+CO0")!=NULL)) {
+            Serial.println("~~~\n\nDevice connected!~~~\n");
+            BLEstate = CONNECTED;
+        }
+    else if(BLEstate != CONNECTED && strstr(slvBuf,"h0t0")!=NULL) {
+            Serial.println("~~~\n\nDevice connected!~~~\n");
+            BLEstate = CONNECTED;
+        }
+    else if(BLEstate==DISCONNECTED) {
         Serial.println("BLE starting discovery");
         //slvCmd("DISC?",TOS_SLV,TOF_SLV);
         hmSlave.write("AT+DISC?");
@@ -474,25 +496,44 @@ int slvTask() {
     }
     else if(BLEstate == SCANNING){ //if we're currently scanning
         //read scan data
-        slvRead(slvBuf);
+        //slvRead(slvBuf);
+        Serial.println("Scan results");
+        Serial.println(slvBuf);
         int slvBufLen=strlen(slvBuf);
-
+        
         //parse slave data
         if(slvBufLen>15) { //discard useless data
             parseSlave(slvBuf,slvBufLen);
         }
-
+        
         //if scan end signalled 
         if(strstr(slvBuf,"OK+DISCE")!=NULL) {
             Serial.println("Scan ended");
             BLEstate = DISCONNECTED;
         }
+
+        //if scan end signalled 
+        if(strstr(slvBuf,"OK+CONN")!=NULL) {
+            Serial.println("Slave connected");
+            BLEstate = CONNECTED;
+        }
         //if scan times out
-        if(millis()-BLEconnectTimer>BLE_SCAN_TIMEOUT) {
+        else if(millis()-BLEconnectTimer>BLE_SCAN_TIMEOUT) {
             Serial.println("Scan timeout");
             BLEstate = DISCONNECTED;
         } 
+        
+        //parse slave data
+        if(slvBufLen>3) { //discard useless data
+            parseSlave(slvBuf,slvBufLen);
+        }
 
+        /*//if scan end signalled 
+        if(strstr(slvBuf,"OK+DISCE")!=NULL) {
+            Serial.println("Scan ended");
+            BLEstate = DISCONNECTED;
+        }*/
+        
         if(BLEstate == DISCONNECTED && BLEslaveDisc==true) {
             Serial.print("Attempting connection to ");
             Serial.print(slvDat.mac);
@@ -509,7 +550,7 @@ int slvTask() {
         }
     }
     else if(BLEstate == CONNECTED) {
-        slvRead(slvBuf);
+        //slvRead(slvBuf);
         int slvBufLen=strlen(slvBuf);
         if(strstr(slvBuf,"OK+LOST")!=NULL) {
             Serial.println("Device disconnected");
@@ -526,10 +567,10 @@ int slvTask() {
         else {
             BLEconnectTimer = millis();
         }
-        if(slvBufLen>15) slvStoreData(slvBuf,slvBufLen);
+        if(slvBufLen>5) slvStoreData(slvBuf,slvBufLen);
     }
     else if(BLEstate == READY) {
-        slvRead(slvBuf);
+        //slvRead(slvBuf);
         if(strstr(slvBuf,"OK+CONN")!=NULL || strstr(slvBuf,"OK+CO0")!=NULL) {
             Serial.println("Device connected!");
             BLEstate = CONNECTED;
@@ -633,6 +674,7 @@ void parseSlave(char *buf,int len) {
     int macI=0;
     int namI=0;
     char *p=buf;
+    Serial.println(buf);
     while(i<len) {
         //skip to start
         while(p[i]!=':') {
@@ -651,7 +693,7 @@ void parseSlave(char *buf,int len) {
         namI=i;//get the name index
         //memcpy(slvBuf2,p+namI,wearable_base_name_len);
         //Serial.println(slvBuf2);
-        Serial.println("Slave Device found");
+        Serial.println("Device found");
         //check against base name
         if(strncmp(WEARABLE_BASE_NAME WEARABLE_BASE_NAME_ID,p+namI,wearable_base_name_len+wearable_base_name_id_len)==0) {
             //found slave
@@ -659,7 +701,7 @@ void parseSlave(char *buf,int len) {
             memcpy(slvDat.mac,p+macI,12);
             memcpy(slvDat.idStr+wearable_id_offset,p+namI+wearable_base_name_len,wearable_id_len);
             slvDat.id=atoi(slvDat.idStr);
-            Serial.println("Found slave");
+            Serial.println("Slave Found slave");
             Serial.println(slvDat.idStr);
             Serial.println(slvDat.mac);
             BLEslaveDisc = true;
@@ -1093,7 +1135,9 @@ void bacReadChk() {
 void loop() {
     //serialCmd();  
     slvTaskChk();
+    #ifndef NOBACON
     bacTaskChk();
     bacReadChk();
+    #endif
     wifiTaskChk();
 }
