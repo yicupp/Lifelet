@@ -83,9 +83,16 @@
 #define BEACON_ADV_MINOR    "00000001"
 
 #define WEARABLE_BASE_NAME "LLWearable"
-#define GATEWAY_BASE_NAME  "LLGate2"
-//#define WEARABLE_BASE_NAME "device"
-//#define GATEWAY_BASE_NAME  "gateway1"
+#define WEARABLE_BASE_NAME "device"
+
+#define GATEWAY_1
+
+#ifdef GATEWAY_1
+    #define GATEWAY_BASE_NAME  "gateway1"
+#else
+    #define GATEWAY_BASE_NAME  "LLGate2"
+#endif
+    
 const int BAC_CONST_SIZE = sizeof(KEY_DEV_NAME)+sizeof(WEARABLE_BASE_NAME)+
 sizeof(KEY_RSSI)+sizeof(KEY_GATEWAY_NAME)+sizeof(GATEWAY_BASE_NAME)-5;
 
@@ -210,11 +217,35 @@ void setup() {
     Serial.println("***********************************************\n");
     Serial.println( "Initialising BLE" ); 
 
-    Serial.println("Checking device status");
-    while(bacOK()==false);
-    Serial.println("Bacon ok");
-    while(slvOK()==false);
-    Serial.println("Slave ok");
+    bool devOk = false;
+    unsigned long devOkT = millis();
+    while(devOk == false) {
+        Serial.println("Checking device status");
+        while(bacOK()==false){
+            if(millis()-devOkT>400) {
+                devOk=false;
+                break;
+            }
+            else {
+                devOk=true;
+                break;
+            }
+        }
+        devOkT=millis();
+        Serial.println("Bacon ok");
+        while(slvOK()==false){
+            if(millis()-devOkT>400) {
+                devOk=false;
+                break;
+            }
+            else if(devOk == true){
+                devOk=true;
+                break;
+            }
+        }
+        devOk = slvOK() & bacOK();
+        Serial.println("Slave ok");
+    }
     
     Serial.println( "Finding bac Device MAC: " );
     bacCmd( "ADDR?", TOS_BAC, TOF_BAC );

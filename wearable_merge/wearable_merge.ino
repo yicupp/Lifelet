@@ -76,11 +76,25 @@ SoftwareSerial hmSlave(4,5);        //Rx,Tx
 
 int LEDPIN = 13;
 
-#define SLAVE_NAME      "LLWearable02"
-#define BEACON_NAME     "LIFELETB0002"
-
-#define DEVICE_ID           1
-#define DEVICE_NAME         "LLWearable02"
+#ifdef WEARABLE_1
+    #define SLAVE_NAME      "LLWearable01"
+    #define BEACON_NAME     "LIFELETB0001"
+    #define DEVICE_ID           1
+    #define DEVICE_NAME         "LLWearable01"
+    #define SLAVE_ADV_UUID1     "00000001" //id is 1
+    #define SLAVE_ADV_UUID2     "00000001"
+    #define BEACON_ADV_UUID1    "00000001" //id is 1
+    #define BEACON_ADV_UUID2    "00000001"
+#else
+    #define SLAVE_NAME      "LLWearable02"
+    #define BEACON_NAME     "LIFELETB0002"
+    #define DEVICE_ID           2
+    #define DEVICE_NAME         "LLWearable02"
+    #define SLAVE_ADV_UUID1     "00000002" //id is 1
+    #define SLAVE_ADV_UUID2     "00000002"
+    #define BEACON_ADV_UUID1    "00000002" //id is 1
+    #define BEACON_ADV_UUID2    "00000002"
+#endif
 
 #define SLAVE_SERV_ID    "0x1234"
 #define BEACON_SERV_ID   "0xABCD"
@@ -92,16 +106,14 @@ int LEDPIN = 13;
 #define BEACON_MEAS_POW     "0xC5"
 
 #define SLAVE_ADV_UUID0     "AAAAAAAA" //Type is slave
-#define SLAVE_ADV_UUID1     "00000002" //id is 1
-#define SLAVE_ADV_UUID2     "00000002"
+
 #define SLAVE_ADV_UUID3     "AAAAAAAA"
 
 #define SLAVE_ADV_MAJOR     "11111111"
 #define SLAVE_ADV_MINOR     "00000001"
 
 #define BEACON_ADV_UUID0    "BBBBBBBB" //type is beacon
-#define BEACON_ADV_UUID1    "00000002" //id is 1
-#define BEACON_ADV_UUID2    "00000002"
+
 #define BEACON_ADV_UUID3    "BBBBBBBB"
 
 #define BEACON_ADV_MAJOR    "22222222"
@@ -503,7 +515,7 @@ int AM_LT() {
 
 int AM_UT() {
   get_mpudata();
-  if(AM >= 13) {
+  if(AM >= 25) {
     t_2 = millis();
     trigger2 = 1;
     
@@ -524,7 +536,7 @@ int AM_OC() {
   angleChange = pow(pow(gx, 2) + pow(gy, 2) + pow(gz, 2), 0.5); //Serial.println(angleChange);
   t_3 = millis();
   trigger3 = 1;
-  if (angleChange >= 30 && angleChange <= 400) { //if orientation changes by between 80-100 degrees
+  if (angleChange >= 60 && angleChange <= 400) { //if orientation changes by between 80-100 degrees
     while(millis()-t_3 <= 500) {
       get_mpudata();
       if(DEAD()) {trigger3=0;return 1;}
