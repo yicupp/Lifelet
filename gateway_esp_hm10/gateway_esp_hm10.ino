@@ -26,7 +26,7 @@
 #define CODE_RSSI           9
 #define  KEY_RSSI           "rssi_value"
 */
-
+const int ledPin = 5;
 //HTTP keys
 #define CODE_HUMIDITY       1
 #define CHAR_HUMIDITY       'h'
@@ -83,7 +83,7 @@
 #define BEACON_ADV_MINOR    "00000001"
 
 #define WEARABLE_BASE_NAME "LLWearable"
-#define WEARABLE_BASE_NAME "device"
+#define WEARABLE_BASE_NAME_key "device"
 
 #define GATEWAY_1
 
@@ -211,7 +211,7 @@ unsigned long int bacSchedR;
 void setup() {
     hmSlave.begin(9600, SERIAL_8N1, 16, 17);
     hmBacon.begin(9600, SERIAL_8N1, 13, 14);
-
+    pinMode (ledPin, OUTPUT);
     
     Serial.begin(115200);
     Serial.println("***********************************************\n");
@@ -246,7 +246,7 @@ void setup() {
         devOk = slvOK() & bacOK();
         Serial.println("Slave ok");
     }
-    
+    digitalWrite (ledPin, HIGH);
     Serial.println( "Finding bac Device MAC: " );
     bacCmd( "ADDR?", TOS_BAC, TOF_BAC );
     Serial.println( "" );
@@ -266,7 +266,7 @@ void setup() {
     Serial.println( "Finding slv software version: " );
     slvCmd( "VERR?", TOS_SLV, TOF_SLV );
     Serial.println( "" );
-    
+    digitalWrite (ledPin, LOW);
     #ifdef RENEW
         Serial.println("Restoring to default settings");
         bacCmd( "RENEW", TOS_BAC, TOF_BAC );
@@ -320,6 +320,8 @@ void setup() {
     slvSchedT=millis()+slvSchedT;
     wifiSchedT=millis()+wifiSchedT;
     bacSchedT=millis()+bacSchedT;
+
+    digitalWrite (ledPin, HIGH);
 }
 
 unsigned long tl = 0;
@@ -642,7 +644,7 @@ void parseSlave(char *buf,int len) {
         namI=i;//get the name index
         //memcpy(slvBuf2,p+namI,wearable_base_name_len);
         //Serial.println(slvBuf2);
-        Serial.println("Device found");
+        Serial.println("Slave Device found");
         //check against base name
         if(strncmp(WEARABLE_BASE_NAME,p+namI,wearable_base_name_len)==0) {
             //found slave
